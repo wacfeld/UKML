@@ -8,7 +8,7 @@ using HarmonyLib;
 public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
-    public const string PLUGIN_NAME = "ULTRAKILL Musntn't Live";
+    public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
     public const string PLUGIN_VERSION = "0.0.0";
 
     /// <summary> We need to have an instance of this in order to do patches </summary>
@@ -21,5 +21,4 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll();
         Log.LogInfo($"Loaded {PLUGIN_NAME}");
     }
-
 }
