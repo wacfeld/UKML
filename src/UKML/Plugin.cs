@@ -21,4 +21,5 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll();
         Log.LogInfo($"Loaded {PLUGIN_NAME}");
     }
+
 }

@@ -21,11 +21,6 @@
     <Reference Include="lib\BepInEx.dll" />
     <Reference Include="lib\0Harmony.dll" />
 
-    <Reference Include="lib\Assembly-CSharp.dll" />
-    <Reference Include="lib\plog.dll" />
-    <Reference Include="lib\Unity.TextMeshPro.dll" />
-    <Reference Include="lib\UnityEngine.UI.dll" />
-
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
