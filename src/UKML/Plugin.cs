@@ -30,6 +30,7 @@ public class Plugin : BaseUnityPlugin
 [HarmonyPatch("GetHurt")]
 class PatchGetHurt
 {
+    // TODO make this only apply to difficulty 6
     // set hardDamageMultiplier to 1
     static void Prefix(ref float hardDamageMultiplier)
     {
