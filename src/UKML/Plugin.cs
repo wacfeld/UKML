@@ -18,8 +18,21 @@ public class Plugin : BaseUnityPlugin
 
     private void Awake()
     {
-        //harmony.PatchAll();
+        harmony.PatchAll();
         Log.LogInfo($"Loaded {PLUGIN_NAME}");
     }
 
+
+
+}
+
+[HarmonyPatch(typeof(NewMovement))]
+[HarmonyPatch("GetHurt")]
+class PatchGetHurt
+{
+    // set hardDamageMultiplier to 1
+    static void Prefix(ref float hardDamageMultiplier)
+    {
+        hardDamageMultiplier = 1f;
+    }
 }
