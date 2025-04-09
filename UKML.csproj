@@ -20,6 +20,8 @@
     <PackageReference Include="UnityEngine.Modules" Version="2022.3.28" IncludeAssets="compile" />
     <Reference Include="lib\BepInEx.dll" />
     <Reference Include="lib\0Harmony.dll" />
+	
+	<Reference Include="lib\Assembly-CSharp.dll" />
 
   </ItemGroup>
 

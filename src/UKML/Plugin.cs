@@ -18,7 +18,7 @@ public class Plugin : BaseUnityPlugin
 
     private void Awake()
     {
-        harmony.PatchAll();
+        //harmony.PatchAll();
         Log.LogInfo($"Loaded {PLUGIN_NAME}");
     }
 
