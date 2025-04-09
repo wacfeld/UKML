@@ -6,3 +6,10 @@ Work in progress.
 ## Current features
 
 - Hard damage multiplier set to 100%
+
+## Installation
+
+Requires [BepInEx](https://thunderstore.io/c/ultrakill/p/BepInEx/BepInExPack/)
+
+- Go to the latest [Release](https://github.com/wacfeld/UKML/releases)
+- Download the dll and move it to `ULTRAKILL/BepInEx/plugins`
