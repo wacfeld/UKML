@@ -1,5 +1,6 @@
 ﻿namespace UKML;
 
+using System;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -35,5 +36,15 @@ class PatchGetHurt
     static void Prefix(ref float hardDamageMultiplier)
     {
         hardDamageMultiplier = 1f;
+    }
+}
+
+[HarmonyPatch(typeof(SpiderBody))]
+[HarmonyPatch("Start")]
+class PatchMaurice
+{
+    static void Postfix(ref float ___coolDownMultiplier)
+    {
+        ___coolDownMultiplier = 5f;
     }
 }
