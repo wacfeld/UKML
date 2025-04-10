@@ -43,8 +43,19 @@ class PatchGetHurt
 [HarmonyPatch("Start")]
 class PatchMaurice
 {
-    static void Postfix(ref float ___coolDownMultiplier)
+    static void Postfix(ref float ___coolDownMultiplier, ref int ___maxBurst, ref EnemyIdentifier ___eid)
     {
-        ___coolDownMultiplier = 5f;
+        ___coolDownMultiplier = 500f;
+        ___maxBurst = 1;
+    }
+}
+
+[HarmonyPatch(typeof(Projectile))]
+[HarmonyPatch("Start")]
+class PatchProjectile
+{
+    static void Postfix(ref float ___speed)
+    {
+        ___speed *= 2f;
     }
 }
