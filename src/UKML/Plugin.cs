@@ -1,5 +1,6 @@
 ﻿namespace UKML;
 
+using System.Runtime.CompilerServices;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -50,11 +51,16 @@ class PatchMauriceStart
 [HarmonyPatch("Update")]
 class PatchMauriceUpdate
 {
-    static void Postfix(SpiderBody __instance, ref EnemyIdentifier ___eid)
+    static void Postfix(SpiderBody __instance, ref EnemyIdentifier ___eid, ref int ___beamsAmount, ref float ___beamProbability)
     {
         if(___eid.beenGasolined)
         {
             __instance.Enrage();
+        }
+        if(__instance.isEnraged)
+        {
+            ___beamsAmount = 2;
+            ___beamProbability = 1f;
         }
     }
 }
