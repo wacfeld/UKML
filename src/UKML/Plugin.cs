@@ -1,6 +1,6 @@
 ﻿namespace UKML;
 
-using System.Runtime.CompilerServices;
+using System;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -75,6 +75,16 @@ class PatchProjectile
         ___turningSpeedMultiplier *= 2f;
     }
 }
+
+//[HarmonyPatch(typeof(Zombie))]
+//[HarmonyPatch("Start")]
+//class PatchZombieStart
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a zombie!");
+//    }
+//}
 
 //[HarmonyPatch(typeof(Punch))]
 //[HarmonyPatch("ParryProjectile")]
