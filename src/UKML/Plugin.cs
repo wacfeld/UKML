@@ -50,8 +50,9 @@ class PatchMaurice
 [HarmonyPatch("Start")]
 class PatchProjectile
 {
-    static void Postfix(ref float ___speed)
+    static void Postfix(ref float ___speed, ref float ___turningSpeedMultiplier)
     {
         ___speed *= 2f;
+        ___turningSpeedMultiplier *= 2f;
     }
 }
