@@ -37,12 +37,25 @@ class PatchGetHurt
 
 [HarmonyPatch(typeof(SpiderBody))]
 [HarmonyPatch("Start")]
-class PatchMaurice
+class PatchMauriceStart
 {
     static void Postfix(ref float ___coolDownMultiplier, ref int ___maxBurst, ref EnemyIdentifier ___eid)
     {
         ___coolDownMultiplier = 500f;
         ___maxBurst = 1;
+    }
+}
+
+[HarmonyPatch(typeof(SpiderBody))]
+[HarmonyPatch("Update")]
+class PatchMauriceUpdate
+{
+    static void Postfix(SpiderBody __instance, ref EnemyIdentifier ___eid)
+    {
+        if(___eid.beenGasolined)
+        {
+            __instance.Enrage();
+        }
     }
 }
 
