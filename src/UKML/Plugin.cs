@@ -75,3 +75,13 @@ class PatchProjectile
         ___turningSpeedMultiplier *= 2f;
     }
 }
+
+//[HarmonyPatch(typeof(Punch))]
+//[HarmonyPatch("ParryProjectile")]
+//class PatchParryProjectile
+//{
+//    static void Postfix(Projectile proj)
+//    {
+//        proj.speed /= 20f;
+//    }
+//}
