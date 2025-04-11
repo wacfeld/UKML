@@ -3,7 +3,6 @@
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using UnityEngine;
 
 [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
@@ -47,13 +46,12 @@ class PatchMaurice
     }
 }
 
-[HarmonyPatch(typeof(SpiderBody))]
-[HarmonyPatch("ShootProj")]
-class MauriceProjectile
+[HarmonyPatch(typeof(Projectile))]
+[HarmonyPatch("Start")]
+class PatchProjectile
 {
-    static void Postfix(ref GameObject ___currentProj)
+    static void Postfix(ref float ___speed)
     {
-        Projectile proj = ___currentProj.GetComponent<Projectile>();
-        proj.speed *= 2;
+        ___speed *= 2f;
     }
 }
