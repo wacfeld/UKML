@@ -129,6 +129,23 @@ class PatchMauriceBeamChargeEnd
     }
 }
 
+[HarmonyPatch(typeof(Explosion))]
+[HarmonyPatch("Start")]
+class PatchExplosion
+{
+    static void Postfix(Explosion __instance)
+    {
+        //Console.WriteLine("hi, i'm an explosion!");
+        //Console.WriteLine("enemy is " + __instance.enemy);
+        //Console.WriteLine("friendlyFire is " + __instance.friendlyFire);
+        //Console.WriteLine("canHit is " + __instance.canHit);
+        if (__instance.enemy)
+        {
+            __instance.canHit = AffectedSubjects.PlayerOnly;
+        }
+    }
+}
+
 //[HarmonyPatch(typeof(EnemyIdentifier))]
 //[HarmonyPatch("UpdateModifiers")]
 //class PatchEIDUpdate
