@@ -79,6 +79,10 @@ class PatchMauriceBeamChargeEnd
 {
     static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos)
     {
+        if(___difficulty < 4)
+        {
+            return;
+        }
         // the game does not distinguish between difficulties >= 4
         // we take advantage of this by using the variable to keep track of how many times the beam has fired
         // odd numbers are parryable, even numbers are parryable
@@ -159,6 +163,9 @@ class PatchProjectileStart
 [HarmonyPatch("Collided")]
 class PatchCollided
 {
+    // preemptively change the friendly enemy type of a projectile to the enemy it's about to try to hit, thus rendering all enemies immune to regular friendly fire
+    // this still allows enemies to be hit by projectiles that have been parried/redirected by explosions, since their "friendly" field gets set to true
+    // this also doesn't deal with explosions caused by projectiles (e.x. hideous masses, cerberus balls)
     static void Prefix(Projectile __instance, ref bool ___active, Collider other)
     {
         if (___active && (other.gameObject.CompareTag("Head") || other.gameObject.CompareTag("Body") || other.gameObject.CompareTag("Limb") || other.gameObject.CompareTag("EndLimb")) && !other.gameObject.CompareTag("Armor"))
