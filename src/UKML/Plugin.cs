@@ -11,7 +11,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.1.0";
+    public const string PLUGIN_VERSION = "0.2.0";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -21,7 +21,7 @@ public class Plugin : BaseUnityPlugin
     private void Awake()
     {
         harmony.PatchAll();
-        Log.LogInfo($"Loaded {PLUGIN_NAME}");
+        Log.LogInfo($"Loaded {PLUGIN_NAME} v{PLUGIN_VERSION}");
     }
 }
 
