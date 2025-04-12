@@ -77,25 +77,42 @@ class PatchMauriceUpdate
 [HarmonyPatch("BeamChargeEnd")]
 class PatchMauriceBeamChargeEnd
 {
-    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos)
+    // the game does not distinguish between difficulties >= 4
+    // we take advantage of this by using the variable to keep track of how many times the beam has fired
+    // odd numbers are parryable, even numbers are parryable
+
+    // we increment the difficulty in the prefix and then adjust the contents of SpiderBody.spark accordingly
+    // this lets us avoid having to overwrite the entirety of BeamChargeEnd just to change the spark color
+    static void Prefix(SpiderBody __instance, ref int ___difficulty)
     {
-        if(___difficulty < 4)
+        if (___difficulty < 4)
         {
             return;
         }
-        // the game does not distinguish between difficulties >= 4
-        // we take advantage of this by using the variable to keep track of how many times the beam has fired
-        // odd numbers are parryable, even numbers are parryable
         ___difficulty++;
-        if(___difficulty >= 100) // prevent overflow in extreme cases
+        if (___difficulty >= 1000) // prevent overflow in extreme cases
         {
-            ___difficulty -= 50;
+            ___difficulty -= 500;
         }
+
+        if (___difficulty % 2 == 0)
+        {
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash;
+        }
+        else
+        {
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash;
+        }
+    }
+
+    // we do the actually parryable field setting in the postfix
+    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos)
+    {
         if(___difficulty % 2 == 0)
         {
             ___parryable = false;
             Console.WriteLine("unparryable!");
-            UnityEngine.Object.Instantiate<GameObject>(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash, __instance.mouth.position, __instance.mouth.rotation).transform.LookAt(___predictedPlayerPos);
+            //UnityEngine.Object.Instantiate<GameObject>(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash, __instance.mouth.position, __instance.mouth.rotation).transform.LookAt(___predictedPlayerPos);
         }
         else
         {
