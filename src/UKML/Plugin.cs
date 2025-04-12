@@ -44,7 +44,7 @@ class PatchMauriceStart
     static void Postfix(ref float ___coolDownMultiplier, ref int ___maxBurst, ref EnemyIdentifier ___eid)
     {
         ___coolDownMultiplier = 500f;
-        ___maxBurst = 1;
+        ___maxBurst = 5;
     }
 }
 
