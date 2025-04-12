@@ -80,9 +80,40 @@ class PatchProjectile
 //[HarmonyPatch("Start")]
 //class PatchZombieStart
 //{
-//    static void Postfix()
+//    static void Postfix(ref EnemyIdentifier ___eid)
 //    {
 //        Console.WriteLine("i'm a zombie!");
+//        Console.WriteLine("my EnemyType is " + ___eid.enemyType.ToString());
+//    }
+//}
+
+//[HarmonyPatch(typeof(ZombieIgnorizer))]
+//[HarmonyPatch("Start")]
+//class PatchZombieIgnorizerStart
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a ZombieIgnorizer!");
+//    }
+//}
+
+//[HarmonyPatch(typeof(ZombieMelee))]
+//[HarmonyPatch("Start")]
+//class PatchZombieMeleeStart
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a ZombieMelee!");
+//    }
+//}
+
+//[HarmonyPatch(typeof(ZombieProjectiles))]
+//[HarmonyPatch("Start")]
+//class PatchZombieProjectilesStart
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a ZombieProjectiles!");
 //    }
 //}
 
