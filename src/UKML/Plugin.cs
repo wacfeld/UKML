@@ -73,6 +73,32 @@ class PatchMauriceUpdate
     }
 }
 
+[HarmonyPatch(typeof(SpiderBody))]
+[HarmonyPatch("BeamChargeEnd")]
+class PatchMauriceBeamChargeEnd
+{
+    static void Postfix(ref bool ___parryable, ref int ___difficulty)
+    {
+        // the game does not distinguish between difficulties >= 4
+        // we take advantage of this by using the variable to keep track of how many times the beam has fired
+        // odd numbers are parryable, even numbers are parryable
+        ___difficulty++;
+        if(___difficulty >= 100) // prevent overflow in extreme cases
+        {
+            ___difficulty -= 50;
+        }
+        if(___difficulty % 2 == 0)
+        {
+            ___parryable = false;
+            Console.WriteLine("unparryable!");
+        }
+        else
+        {
+            Console.WriteLine("parryable!");
+        }
+    }
+}
+
 //[HarmonyPatch(typeof(EnemyIdentifier))]
 //[HarmonyPatch("UpdateModifiers")]
 //class PatchEIDUpdate
