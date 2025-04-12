@@ -146,6 +146,25 @@ class PatchExplosion
     }
 }
 
+[HarmonyPatch(typeof(ContinuousBeam))]
+[HarmonyPatch("Update")]
+class PatchSchismBeam
+{
+    static void Postfix(ContinuousBeam __instance)
+    {
+        if (__instance.enemy)
+        {
+            __instance.canHitEnemy = false;
+        }
+        else
+        {
+            __instance.canHitEnemy = true;
+        }
+        //Console.WriteLine("I'm a ContinuousBeam! canHitEnemy = " + __instance.canHitEnemy);
+        //Console.WriteLine("enemy = " + __instance.enemy);
+    }
+}
+
 //[HarmonyPatch(typeof(EnemyIdentifier))]
 //[HarmonyPatch("UpdateModifiers")]
 //class PatchEIDUpdate
