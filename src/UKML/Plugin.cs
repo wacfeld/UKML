@@ -111,18 +111,17 @@ class PatchMauriceBeamChargeEnd
         if(___difficulty % 2 == 0)
         {
             ___parryable = false;
-            Console.WriteLine("unparryable!");
+            //Console.WriteLine("unparryable!");
             //UnityEngine.Object.Instantiate<GameObject>(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash, __instance.mouth.position, __instance.mouth.rotation).transform.LookAt(___predictedPlayerPos);
         }
-        else
-        {
-            Console.WriteLine("parryable!");
-        }
+        //else
+        //{
+        //    Console.WriteLine("parryable!");
+        //}
 
         // detect BeamFire() invokes and replace them with a faster one
         if(__instance.IsInvoking("BeamFire"))
         {
-            Console.WriteLine("invoked BeamFire!");
             __instance.CancelInvoke("BeamFire");
             __instance.Invoke("BeamFire", 0.25f / ___eid.totalSpeedModifier);
         }
