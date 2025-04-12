@@ -1,10 +1,12 @@
 ﻿namespace UKML;
 
 using System;
+using System.Security.Cryptography;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
@@ -74,6 +76,76 @@ class PatchMauriceUpdate
 }
 
 [HarmonyPatch(typeof(SpiderBody))]
+[HarmonyPatch("Update")]
+class PatchMauriceTracking
+{
+    // track the player's movement and predict where to aim to make the projectiles land
+    static void Prefix(SpiderBody __instance, EnemyIdentifier ___eid,
+        ref Quaternion ___followPlayerRot, ref float ___beamCharge,
+        Transform ___headModel, ref bool ___rotating, ref Quaternion ___predictedRot
+        )
+    {
+        if (___eid.target == null)
+        {
+            return;
+        }
+        if (___eid.dead)
+        {
+            return;
+        }
+
+        float dist = (__instance.transform.position - ___eid.target.position).magnitude;
+        Vector3 predictedLocation = ___eid.target.PredictTargetPosition(dist / 100);
+        ___followPlayerRot = Quaternion.LookRotation(((predictedLocation - __instance.transform.position) * 20).normalized);
+        if (___beamCharge < 1f)
+        {
+            //___headModel.transform.rotation = Quaternion.RotateTowards(___headModel.transform.rotation, ___followPlayerRot, (Quaternion.Angle(___headModel.transform.rotation, ___followPlayerRot) + 10f) * Time.deltaTime * 15f * ___eid.totalSpeedModifier);
+            ___headModel.transform.rotation = Quaternion.RotateTowards(___headModel.transform.rotation, ___followPlayerRot, 30);
+        }
+    }
+
+    // Update() will refuse to shoot if it isn't closely lined up with the player
+    // this gets in the way of our location prediction, so if the conditions are met for refusing to shoot, we just replicate the shooting logic ourselves
+    static void Postfix(SpiderBody __instance, ref bool ___charging, ref float ___beamCharge,
+        Transform ___headModel, Quaternion ___followPlayerRot, EnemyIdentifier ___eid, ref bool ___readyToShoot, ref float ___burstCharge,
+        ref int ___currentBurst)
+    {
+        var shoot = AccessTools.Method(typeof(SpiderBody))
+        if(!___charging && ___beamCharge == 0f)
+        {
+            if (!___readyToShoot || ___burstCharge != 0f || (!(Quaternion.Angle(___headModel.rotation, ___followPlayerRot) < 1f) && !(Vector3.Distance(__instance.transform.position, ___eid.target.position) < 10f)) {
+                if (___currentBurst != 0)
+                {
+                    __instance.ShootProj();
+                }
+                else if ((Random.Range(0f, health * 0.4f) >= beamProbability && beamProbability <= 5f) || (Vector3.Distance(base.transform.position, target.position) > 50f && !MonoSingleton<NewMovement>.Instance.ridingRocket))
+                {
+                    ShootProj();
+                    beamProbability += 1f;
+                }
+                else if (!eid.buffTargeter || Vector3.Distance(base.transform.position, eid.buffTargeter.transform.position) > 15f)
+                {
+                    ChargeBeam();
+                    if (difficulty > 2 && health < maxHealth / 2f)
+                    {
+                        beamsAmount = 2;
+                    }
+                    if (health > 10f)
+                    {
+                        beamProbability = 0f;
+                    }
+                    else
+                    {
+                        beamProbability = 1f;
+                    }
+                }
+            }
+        }
+      
+    }
+}
+
+[HarmonyPatch(typeof(SpiderBody))]
 [HarmonyPatch("BeamChargeEnd")]
 class PatchMauriceBeamChargeEnd
 {
@@ -111,18 +183,17 @@ class PatchMauriceBeamChargeEnd
         if(___difficulty % 2 == 0)
         {
             ___parryable = false;
-            Console.WriteLine("unparryable!");
+            //Console.WriteLine("unparryable!");
             //UnityEngine.Object.Instantiate<GameObject>(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash, __instance.mouth.position, __instance.mouth.rotation).transform.LookAt(___predictedPlayerPos);
         }
-        else
-        {
-            Console.WriteLine("parryable!");
-        }
+        //else
+        //{
+        //    Console.WriteLine("parryable!");
+        //}
 
         // detect BeamFire() invokes and replace them with a faster one
         if(__instance.IsInvoking("BeamFire"))
         {
-            Console.WriteLine("invoked BeamFire!");
             __instance.CancelInvoke("BeamFire");
             __instance.Invoke("BeamFire", 0.25f / ___eid.totalSpeedModifier);
         }
