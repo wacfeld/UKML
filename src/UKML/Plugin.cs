@@ -67,14 +67,28 @@ class PatchMauriceUpdate
 
 [HarmonyPatch(typeof(Projectile))]
 [HarmonyPatch("Start")]
-class PatchProjectile
+class PatchProjectileStart
 {
-    static void Postfix(ref float ___speed, ref float ___turningSpeedMultiplier)
+    static void Postfix(Projectile __instance, ref float ___speed, ref float ___turningSpeedMultiplier)
     {
         ___speed *= 2f;
         ___turningSpeedMultiplier *= 2f;
+        //Console.WriteLine("I'm a projectile! friendly=" + __instance.friendly.ToString());
     }
 }
+
+//[HarmonyPatch(typeof(Projectile))]
+//[HarmonyPatch("Update")]
+//class PatchProjectileUpdate
+//{
+//    static void Postfix(Projectile __instance)
+//    {
+//        if(__instance.friendly)
+//        {
+//            Console.WriteLine("I'm friendly!");
+//        }
+//    }
+//}
 
 //[HarmonyPatch(typeof(Zombie))]
 //[HarmonyPatch("Start")]
@@ -111,9 +125,10 @@ class PatchProjectile
 //[HarmonyPatch("Start")]
 //class PatchZombieProjectilesStart
 //{
-//    static void Postfix()
+//    static void Postfix(ZombieProjectiles __instance)
 //    {
 //        Console.WriteLine("i'm a ZombieProjectiles!");
+//        Console.WriteLine("hasMelee: " + __instance.hasMelee.ToString());
 //    }
 //}
 
