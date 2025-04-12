@@ -100,30 +100,27 @@ class PatchProjectileStart
     }
 }
 
-//[HarmonyPatch(typeof(Projectile))]
-//[HarmonyPatch("Collided")]
-//class PatchCollided
-//{
-//    static void Prefix(ref bool ___active, Collider other)
-//    {
-//        if(___active && (other.gameObject.CompareTag("Head") || other.gameObject.CompareTag("Body") || other.gameObject.CompareTag("Limb") || other.gameObject.CompareTag("EndLimb")) && !other.gameObject.CompareTag("Armor"))
-//        {
-//            EnemyIdentifierIdentifier componentInParent2 = other.gameObject.GetComponentInParent<EnemyIdentifierIdentifier>();
-//            EnemyIdentifier enemyIdentifier = null;
-//            if (componentInParent2 != null && componentInParent2.eid != null)
-//            {
-//                enemyIdentifier = componentInParent2.eid;
-//            }
-//            if (enemyIdentifier != null)
-//            {
-//                Console.WriteLine("enemytype is " + enemyIdentifier.enemyType.ToString());
-//            }
-//        }
-//        //Console.WriteLine("something collided!");
-
-//        //Console.WriteLine("I'm a projectile! friendly=" + __instance.friendly.ToString());
-//    }
-//}
+[HarmonyPatch(typeof(Projectile))]
+[HarmonyPatch("Collided")]
+class PatchCollided
+{
+    static void Prefix(Projectile __instance, ref bool ___active, Collider other)
+    {
+        if (___active && (other.gameObject.CompareTag("Head") || other.gameObject.CompareTag("Body") || other.gameObject.CompareTag("Limb") || other.gameObject.CompareTag("EndLimb")) && !other.gameObject.CompareTag("Armor"))
+        {
+            EnemyIdentifierIdentifier componentInParent2 = other.gameObject.GetComponentInParent<EnemyIdentifierIdentifier>();
+            EnemyIdentifier enemyIdentifier = null;
+            if (componentInParent2 != null && componentInParent2.eid != null)
+            {
+                enemyIdentifier = componentInParent2.eid;
+            }
+            if (enemyIdentifier != null)
+            {
+                __instance.safeEnemyType = enemyIdentifier.enemyType;
+            }
+        }
+    }
+}
 
 //[HarmonyPatch(typeof(Projectile))]
 //[HarmonyPatch("Update")]
@@ -159,15 +156,15 @@ class PatchProjectileStart
 //    }
 //}
 
-[HarmonyPatch(typeof(ZombieMelee))]
-[HarmonyPatch("Start")]
-class PatchZombieMeleeStart
-{
-    static void Postfix()
-    {
-        Console.WriteLine("i'm a ZombieMelee!");
-    }
-}
+//[HarmonyPatch(typeof(ZombieMelee))]
+//[HarmonyPatch("Start")]
+//class PatchZombieMeleeStart
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a ZombieMelee!");
+//    }
+//}
 
 //[HarmonyPatch(typeof(ZombieProjectiles))]
 //[HarmonyPatch("Start")]
