@@ -77,7 +77,7 @@ class PatchMauriceUpdate
 [HarmonyPatch("BeamChargeEnd")]
 class PatchMauriceBeamChargeEnd
 {
-    static void Postfix(ref bool ___parryable, ref int ___difficulty)
+    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos)
     {
         // the game does not distinguish between difficulties >= 4
         // we take advantage of this by using the variable to keep track of how many times the beam has fired
@@ -91,6 +91,7 @@ class PatchMauriceBeamChargeEnd
         {
             ___parryable = false;
             Console.WriteLine("unparryable!");
+            UnityEngine.Object.Instantiate<GameObject>(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash, __instance.mouth.position, __instance.mouth.rotation).transform.LookAt(___predictedPlayerPos);
         }
         else
         {
@@ -110,16 +111,16 @@ class PatchMauriceBeamChargeEnd
 //    }
 //}
 
-[HarmonyPatch(typeof(EnemyIdentifier))]
-[HarmonyPatch("IsTypeFriendly")]
-class PatchFriendly
-{
-    static void Postfix(ref bool __result)
-    {
-        Console.WriteLine("I have been called");
-        __result = true;
-    }
-}
+//[HarmonyPatch(typeof(EnemyIdentifier))]
+//[HarmonyPatch("IsTypeFriendly")]
+//class PatchFriendly
+//{
+//    static void Postfix(ref bool __result)
+//    {
+//        Console.WriteLine("I have been called");
+//        __result = true;
+//    }
+//}
 
 //[HarmonyPatch(typeof(Turret))]
 //[HarmonyPatch("Start")]
