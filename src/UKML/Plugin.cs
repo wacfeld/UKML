@@ -121,6 +121,16 @@ class PatchFriendly
     }
 }
 
+//[HarmonyPatch(typeof(Turret))]
+//[HarmonyPatch("Start")]
+//class PatchTurret
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("i'm a turret!");
+//    }
+//}
+
 //[HarmonyPatch(typeof(EnemyIdentifier))]
 //[HarmonyPatch("Update")]
 //class PatchEID
