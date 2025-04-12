@@ -52,7 +52,12 @@ class PatchMauriceStart
 [HarmonyPatch("Update")]
 class PatchMauriceUpdate
 {
-    static void Postfix(SpiderBody __instance, ref EnemyIdentifier ___eid, ref int ___beamsAmount, ref float ___beamProbability)
+    //static void Prefix(EnemyIdentifier ___eid)
+    //{
+    //    ___eid.totalSpeedModifier = 2f;
+    //}
+
+    static void Postfix(SpiderBody __instance, EnemyIdentifier ___eid, ref int ___beamsAmount, ref float ___beamProbability)
     {
         if(___eid.beenGasolined)
         {
@@ -63,8 +68,21 @@ class PatchMauriceUpdate
             ___beamsAmount = 2;
             ___beamProbability = 1f;
         }
+
+        //Console.WriteLine("speed multiplier " + ___eid.totalSpeedModifier);
     }
 }
+
+//[HarmonyPatch(typeof(EnemyIdentifier))]
+//[HarmonyPatch("UpdateModifiers")]
+//class PatchEIDUpdate
+//{
+//    static void postfix(EnemyIdentifier __instance)
+//    {
+//        __instance.totalSpeedModifier = 2f;
+//        Console.WriteLine("I have been called");
+//    }
+//}
 
 [HarmonyPatch(typeof(EnemyIdentifier))]
 [HarmonyPatch("IsTypeFriendly")]
