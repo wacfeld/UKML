@@ -106,7 +106,7 @@ class PatchMauriceBeamChargeEnd
     }
 
     // we do the actually parryable field setting in the postfix
-    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos)
+    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
     {
         if(___difficulty % 2 == 0)
         {
@@ -117,6 +117,14 @@ class PatchMauriceBeamChargeEnd
         else
         {
             Console.WriteLine("parryable!");
+        }
+
+        // detect BeamFire() invokes and replace them with a faster one
+        if(__instance.IsInvoking("BeamFire"))
+        {
+            Console.WriteLine("invoked BeamFire!");
+            __instance.CancelInvoke("BeamFire");
+            __instance.Invoke("BeamFire", 0.25f / ___eid.totalSpeedModifier);
         }
     }
 }
