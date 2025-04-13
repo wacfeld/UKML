@@ -304,12 +304,24 @@ class PatchCerbProj
                 ___difficulty++;
 
                 // create a shockwave
-                //PhysicalShockwave shock = new PhysicalShockwave();
+                // we hacked the cerb to put a copy of itself in alreadyHitEnemies, so we find it there and grab its shockwave asset
                 if(__instance.alreadyHitEnemies.Count > 0)
                 {
                     Console.WriteLine("found an eid!");
                     EnemyIdentifier eid = __instance.alreadyHitEnemies[0];
-                    Console.WriteLine(eid.statue);
+                    StatueBoss cerb = eid.statue.GetComponent<StatueBoss>();
+                    if(cerb != null)
+                    {
+                        // use reflection to get the asset
+                        var field = typeof(StatueBoss).GetField("stompWave", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
+                        UnityEngine.AddressableAssets.AssetReference stompwave = (UnityEngine.AddressableAssets.AssetReference) field.GetValue(cerb);
+                        GameObject currentStompWave = UnityEngine.Object.Instantiate(stompwave.ToAsset(), __instance.transform.position, Quaternion.identity);
+                        Console.WriteLine("created shockwave!");
+
+                    } else
+                    {
+                        Console.WriteLine("cerb is null!");
+                    }
                 }
                 //flag = true;
                 //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
