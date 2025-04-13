@@ -229,6 +229,10 @@ class PatchCerbThrow
             field.SetValue(component, 6);
             //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
 
+            // this is part of a roundabout hack to allow the orb to create its own shockwaves
+            // we leave our own EID in the list of already hit enemies to allow it to find us and use our shockwave asset
+            component.alreadyHitEnemies.Insert(0, ___eid);
+
             component.target = ___eid.target;
         }
         ___orbGrowing = false;
@@ -268,19 +272,7 @@ class PatchCerbProj
             ___aud.pitch = __instance.transform.localScale.x / ___origScale.x * 2.8f;
             __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
         }
-        //if (__instance.precheckForCollisions)
-        //{
-        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
-        //    layerMask = (int)layerMask | 4;
-        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
-        //    {
-        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
 
-        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
-        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
-        //        //Collided(hitInfo.collider);
-        //    }
-        //}
 
         // adapted from Nail.FixedUpdate()
         RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
@@ -303,11 +295,22 @@ class PatchCerbProj
                     continue;
                 }
 
+                // bounce the ball
                 //base.transform.position = array[i].point;
                 Console.WriteLine("bouncing!");
                 ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
+               
+                // increase bounce counter
                 ___difficulty++;
-                
+
+                // create a shockwave
+                //PhysicalShockwave shock = new PhysicalShockwave();
+                if(__instance.alreadyHitEnemies.Count > 0)
+                {
+                    Console.WriteLine("found an eid!");
+                    EnemyIdentifier eid = __instance.alreadyHitEnemies[0];
+                    Console.WriteLine(eid.statue);
+                }
                 //flag = true;
                 //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
 
