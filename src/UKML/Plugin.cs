@@ -223,6 +223,9 @@ class PatchOrbSpawn
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
+            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
+            Console.WriteLine("projectile has difficulty " + field.GetValue(component));
+
             component.target = ___eid.target;
             if (___difficulty <= 2)
             {
