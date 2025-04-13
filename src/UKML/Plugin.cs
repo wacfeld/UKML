@@ -252,6 +252,11 @@ class PatchCerbProj
         {
             return true;
         }
+        // if it's out of bounces then let it run its course
+        if(___difficulty >= 8)
+        {
+            return true;
+        }
 
         // otherwise run our own code and skip the original
         if (!__instance.hittingPlayer && !__instance.undeflectable && !__instance.decorative && __instance.speed != 0f && __instance.homingType == HomingType.None)
@@ -301,6 +306,7 @@ class PatchCerbProj
                 //base.transform.position = array[i].point;
                 Console.WriteLine("bouncing!");
                 ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
+                ___difficulty++;
                 
                 //flag = true;
                 //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
