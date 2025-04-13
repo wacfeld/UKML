@@ -251,6 +251,11 @@ class PatchCerbProj
 {
     static bool Prefix(Projectile __instance, ref int ___difficulty, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
     {
+        // don't run if ball has been parried
+        if(__instance.parried || __instance.boosted)
+        {
+            return true;
+        }
         // don't run if not cerb projectile
         if(___difficulty < 6)
         {
@@ -273,6 +278,19 @@ class PatchCerbProj
             __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
         }
 
+        //if (__instance.precheckForCollisions)
+        //{
+        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
+        //    layerMask = (int)layerMask | 4;
+        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
+        //    {
+        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
+
+        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
+        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
+        //        //Collided(hitInfo.collider);
+        //    }
+        //}
 
         // adapted from Nail.FixedUpdate()
         RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
@@ -310,6 +328,7 @@ class PatchCerbProj
                     Console.WriteLine("found an eid!");
                     EnemyIdentifier eid = __instance.alreadyHitEnemies[0];
                     StatueBoss cerb = eid.statue.GetComponent<StatueBoss>();
+                    Console.WriteLine("reflecting on my actions");
                     if(cerb != null)
                     {
                         // use reflection to get the asset
