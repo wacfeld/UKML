@@ -200,3 +200,55 @@ class PatchCollided
         }
     }
 }
+
+// we completely overwrite OrbSpawn so that we can set the difficulty field of the projectile we create
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("OrbSpawn")]
+class PatchOrbSpawn
+{
+    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, ref int ___difficulty, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
+    {
+        // do normal stuff if on lower difficulties
+        if(___difficulty < 4)
+        {
+            return true;
+        }
+
+        Console.WriteLine("spawning orb!");
+
+        GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
+        gameObject.transform.LookAt(___projectedPlayerPos);
+
+        gameObject.GetComponent<Rigidbody>().AddForce(gameObject.transform.forward * 20000f);
+
+        if (gameObject.TryGetComponent<Projectile>(out var component))
+        {
+            component.target = ___eid.target;
+            if (___difficulty <= 2)
+            {
+                if (___difficulty <= 2)
+                {
+                    component.bigExplosion = false;
+                }
+                component.damage *= ___eid.totalDamageModifier;
+            }
+        }
+        ___orbGrowing = false;
+        ___orbLight.range = 0f;
+        ___part.Play();
+
+        // skip the original
+        return false;
+    }
+}
+
+//[HarmonyPatch(typeof(StatueBoss))]
+//[HarmonyPatch("Update")]
+//class PatchStatueBoss
+//{
+//    static void Postfix(StatueBoss __instance)
+//    {
+//        Console.WriteLine("i'm a statue boss!");
+//        __instance.OrbSpawn();
+//    }
+//}
