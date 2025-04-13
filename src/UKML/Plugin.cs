@@ -244,7 +244,9 @@ class PatchOrbSpawn
 [HarmonyPatch("Collided")]
 class PatchCerbProj
 {
-    static bool Prefix(Projectile __instance, ref int ___difficulty, ref bool ___active, Collider other)
+    // we run through the projectile collision checklist and let the original run with no changes if it's not an environment collision
+    // if it is an environment collision then we run our own logic and skip the original
+    static bool Prefix(Projectile __instance, ref int ___difficulty, ref bool ___active, Collider other, Rigidbody ___rb)
     {
         // only run if it's a cerb ball (difficulty >= 6)
         if (___difficulty < 6)
@@ -275,11 +277,64 @@ class PatchCerbProj
         {
             return true;
         }
+        // this is the only one where we step in (environment collisions)
         else if (!__instance.hittingPlayer && LayerMaskDefaults.IsMatchingLayer(other.gameObject.layer, LMD.Environment) && !__instance.ignoreEnvironment && ___active)
         {
             Console.Write("you've activated my trap card!");
-            return true;
-            //return false;
+
+            // a bunch of duplicated code from the original game
+            Breakable component4 = other.gameObject.GetComponent<Breakable>();
+            if (component4 != null && !component4.precisionOnly && !component4.specialCaseOnly && (component4.weak || __instance.strong))
+            {
+                component4.Break();
+            }
+            if (other.gameObject.TryGetComponent<Bleeder>(out var component5))
+            {
+                bool flag2 = false;
+                if (!__instance.friendly && !__instance.playerBullet && component5.ignoreTypes.Length != 0)
+                {
+                    EnemyType[] ignoreTypes = component5.ignoreTypes;
+                    for (int i = 0; i < ignoreTypes.Length; i++)
+                    {
+                        if (ignoreTypes[i] == __instance.safeEnemyType)
+                        {
+                            flag2 = true;
+                            break;
+                        }
+                    }
+                }
+                if (!flag2)
+                {
+                    if (__instance.damage <= 10f)
+                    {
+                        component5.GetHit(__instance.transform.position, GoreType.Body);
+                    }
+                    else if (__instance.damage <= 30f)
+                    {
+                        component5.GetHit(__instance.transform.position, GoreType.Limb);
+                    }
+                    else
+                    {
+                        component5.GetHit(__instance.transform.position, GoreType.Head);
+                    }
+                }
+            }
+            if (SceneHelper.IsStaticEnvironment(other))
+            {
+                MonoSingleton<SceneHelper>.Instance.CreateEnviroGibs(base.transform.position - base.transform.forward, base.transform.forward, 5f, Mathf.Max(2, Mathf.RoundToInt(damage / (float)((playerBullet || friendly) ? 4 : 10))), Mathf.Min(1f, Mathf.Max(0.5f, damage / (float)((playerBullet || friendly) ? 4 : 10))));
+            }
+
+            // bounce
+            ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, ) * ___rb.velocity.magnitude;
+
+            // bounce #1
+            //if(___difficulty == 6)
+            //{
+
+            //}
+
+            // skip original
+            return false;
         }
         else if (other.gameObject.layer == 0)
         {
