@@ -1,6 +1,7 @@
 ﻿namespace UKML;
 
 using System;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -204,7 +205,7 @@ class PatchCollided
 // we completely overwrite OrbSpawn so that we can set the difficulty field of the projectile we create
 [HarmonyPatch(typeof(StatueBoss))]
 [HarmonyPatch("OrbSpawn")]
-class PatchOrbSpawn
+class PatchCerbThrow
 {
     static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, ref int ___difficulty, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
     {
@@ -244,7 +245,72 @@ class PatchOrbSpawn
 [HarmonyPatch("FixedUpdate")]
 class PatchCerbProj
 {
-    
+    static bool Prefix(Projectile __instance, ref int ___difficulty, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
+    {
+        // don't run if not cerb projectile
+        if(___difficulty < 6)
+        {
+            return true;
+        }
+
+        // otherwise run our own code and skip the original
+        if (!__instance.hittingPlayer && !__instance.undeflectable && !__instance.decorative && __instance.speed != 0f && __instance.homingType == HomingType.None)
+        {
+            ___rb.velocity = __instance.transform.forward * __instance.speed;
+        }
+        if (__instance.decorative && __instance.transform.localScale.x < ___origScale.x)
+        {
+            ___aud.pitch = __instance.transform.localScale.x / ___origScale.x * 2.8f;
+            __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
+        }
+        //if (__instance.precheckForCollisions)
+        //{
+        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
+        //    layerMask = (int)layerMask | 4;
+        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
+        //    {
+        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
+
+        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
+        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
+        //        //Collided(hitInfo.collider);
+        //    }
+        //}
+
+        // adapted from Nail.FixedUpdate()
+        RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
+        if (array == null || array.Length == 0)
+        {
+            return false;
+        }
+        Array.Sort(array, (RaycastHit x, RaycastHit y) => x.distance.CompareTo(y.distance));
+        for (int i = 0; i < array.Length; i++)
+        {
+            GameObject gameObject = array[i].transform.gameObject;
+            if ((gameObject.layer == 10 || gameObject.layer == 11) && (gameObject.gameObject.CompareTag("Head") || gameObject.gameObject.CompareTag("Body") || gameObject.gameObject.CompareTag("Limb") || gameObject.gameObject.CompareTag("EndLimb") || gameObject.gameObject.CompareTag("Enemy")))
+            {
+                return false;
+            }
+            else
+            {
+                if (!LayerMaskDefaults.IsMatchingLayer(gameObject.layer, LMD.Environment) && gameObject.layer != 26 && !gameObject.CompareTag("Armor"))
+                {
+                    continue;
+                }
+
+                //base.transform.position = array[i].point;
+                Console.WriteLine("bouncing!");
+                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
+                
+                //flag = true;
+                //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
+
+                break;
+            }
+        }
+
+        return false;
+    }
 }
 
 //[HarmonyPatch(typeof(StatueBoss))]
