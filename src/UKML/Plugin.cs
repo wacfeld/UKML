@@ -214,7 +214,7 @@ class PatchOrbSpawn
             return true;
         }
 
-        Console.WriteLine("spawning orb!");
+        //Console.WriteLine("spawning orb!");
 
         GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
         gameObject.transform.LookAt(___projectedPlayerPos);
@@ -223,18 +223,12 @@ class PatchOrbSpawn
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
+            // set projectile's difficulty to 6 to indicate it's a cerb ball
             var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-            Console.WriteLine("projectile has difficulty " + field.GetValue(component));
+            field.SetValue(component, 6);
+            //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
 
             component.target = ___eid.target;
-            if (___difficulty <= 2)
-            {
-                if (___difficulty <= 2)
-                {
-                    component.bigExplosion = false;
-                }
-                component.damage *= ___eid.totalDamageModifier;
-            }
         }
         ___orbGrowing = false;
         ___orbLight.range = 0f;
