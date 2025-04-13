@@ -241,52 +241,10 @@ class PatchOrbSpawn
 
 // make cerb projectiles bounce off surfaces like sawblades
 [HarmonyPatch(typeof(Projectile))]
-[HarmonyPatch("Collided")]
+[HarmonyPatch("FixedUpdate")]
 class PatchCerbProj
 {
-    static bool Prefix(Projectile __instance, ref int ___difficulty, ref bool ___active, Collider other)
-    {
-        // only run if it's a cerb ball (difficulty >= 6)
-        if (___difficulty < 6)
-        {
-            return true;
-        }
-
-        // don't run if it's colliding with something that isn't environment
-        if (!___active)
-        {
-            return true;
-        }
-        EnemyIdentifierIdentifier component2;
-        EnemyIdentifierIdentifier component3;
-        if(!__instance.friendly && !__instance.hittingPlayer && other.gameObject.CompareTag("Player"))
-        {
-            return true;
-        }
-        else if (__instance.canHitCoin && other.gameObject.CompareTag("Coin"))
-        {
-            return true;
-        }
-        else if ((other.gameObject.CompareTag("Armor") && (__instance.friendly || !other.TryGetComponent<EnemyIdentifierIdentifier>(out component2) || !component2.eid || component2.eid.enemyType != __instance.safeEnemyType)) || (__instance.boosted && other.gameObject.layer == 11 && other.gameObject.CompareTag("Body") && other.TryGetComponent<EnemyIdentifierIdentifier>(out component3) && (bool)component3.eid && component3.eid.enemyType == EnemyType.MaliciousFace && !component3.eid.isGasolined))
-        {
-            return true;
-        }
-        else if (___active && (other.gameObject.CompareTag("Head") || other.gameObject.CompareTag("Body") || other.gameObject.CompareTag("Limb") || other.gameObject.CompareTag("EndLimb")) && !other.gameObject.CompareTag("Armor"))
-        {
-            return true;
-        }
-        else if (!__instance.hittingPlayer && LayerMaskDefaults.IsMatchingLayer(other.gameObject.layer, LMD.Environment) && !__instance.ignoreEnvironment && ___active)
-        {
-            Console.Write("you've activated my trap card!");
-            return true;
-            //return false;
-        }
-        else if (other.gameObject.layer == 0)
-        {
-            return true;
-        }
-        return true;
-    }
+    
 }
 
 //[HarmonyPatch(typeof(StatueBoss))]
