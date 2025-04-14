@@ -19,8 +19,8 @@ All changes are relative to Brutal difficulty
 - Hard damage multiplier set to 100%
 - Non-homing projectile speed doubled
 - Homing projectile turning speed doubled
-- Enemy projectiles (including Schism beams) never damage enemies unless parried or redirected by explosions
-- Enemy-caused explosions never directly damage enemies (but can still light susceptible enemies on fire)
+- Enemy projectiles (including Schism beams) won't damage enemies unless parried or redirected by explosions
+- Enemy-caused explosions won't directly damage enemies (but can still light susceptible enemies on fire)
 </details>
 
 <details>
