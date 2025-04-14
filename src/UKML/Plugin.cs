@@ -23,6 +23,7 @@ public class Plugin : BaseUnityPlugin
 
     private static bool addressableInit = false;
     public static GameObject shockwave;
+    public static GameObject explosion;
 
     public static T LoadObject<T>(string path)
     {
@@ -37,7 +38,8 @@ public class Plugin : BaseUnityPlugin
     private void LoadAll()
     {
         shockwave = LoadObject<GameObject>("Assets/Prefabs/Attacks and Projectiles/PhysicalShockwave.prefab");
-        Console.WriteLine("loaded asset!");
+        explosion = LoadObject<GameObject>("Assets/Prefabs/Attacks and Projectiles/Explosions/Explosion.prefab");
+        Console.WriteLine("loaded assets!");
     }
 
     private void Awake()
@@ -282,7 +284,7 @@ class PatchCerbProj
             return true;
         }
         // if it's out of bounces then let it run its course
-        if(___difficulty >= 20)
+        if(___difficulty >= 9)
         {
             return true;
         }
@@ -337,11 +339,12 @@ class PatchCerbProj
                 //base.transform.position = array[i].point;
                 Console.WriteLine("bouncing!");
                 Vector3 norm = array[i].normal;
-                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
+                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude / 2;
                
                 // increase bounce counter
                 ___difficulty++;
 
+                // create a shockwave!
                 GameObject wave = UnityEngine.Object.Instantiate(Plugin.shockwave, ___rb.transform.position, Quaternion.identity);
                 PhysicalShockwave component = wave.GetComponent<PhysicalShockwave>();
                 component.damage = 25;
@@ -349,12 +352,15 @@ class PatchCerbProj
                 component.maxSize = 100f;
                 component.enemy = true;
                 component.enemyType = EnemyType.Cerberus;
-                //component.transform.rotation = Quaternion.Euler(norm.x, norm.y, norm.z);
                 component.transform.rotation = Quaternion.FromToRotation(component.transform.rotation * Vector3.up, norm);
-                //component.transform.Rotate(Quaternion.Euler(norm), Space.Self);
 
-                //flag = true;
-                //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
+                // create an explosion
+                GameObject explode = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity);
+                Explosion component2 = explode.GetComponent<Explosion>();
+                component2.maxSize *= 1.5f;
+                component2.damage = Mathf.RoundToInt(__instance.damage);
+                component2.enemy = true;
+                MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position);
 
                 break;
             }
