@@ -6,8 +6,8 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.AddressableAssets.ResourceLocators;
-using UnityEngine.ResourceManagement.ResourceLocations;
+//using UnityEngine.AddressableAssets.ResourceLocators;
+//using UnityEngine.ResourceManagement.ResourceLocations;
 
 [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
@@ -282,7 +282,7 @@ class PatchCerbProj
             return true;
         }
         // if it's out of bounces then let it run its course
-        if(___difficulty >= 8)
+        if(___difficulty >= 20)
         {
             return true;
         }
@@ -336,11 +336,22 @@ class PatchCerbProj
                 // bounce the ball
                 //base.transform.position = array[i].point;
                 Console.WriteLine("bouncing!");
+                Vector3 norm = array[i].normal;
                 ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
                
                 // increase bounce counter
                 ___difficulty++;
 
+                GameObject wave = UnityEngine.Object.Instantiate(Plugin.shockwave, ___rb.transform.position, Quaternion.identity);
+                PhysicalShockwave component = wave.GetComponent<PhysicalShockwave>();
+                component.damage = 25;
+                component.speed = 75f;
+                component.maxSize = 100f;
+                component.enemy = true;
+                component.enemyType = EnemyType.Cerberus;
+                //component.transform.rotation = Quaternion.Euler(norm.x, norm.y, norm.z);
+                component.transform.rotation = Quaternion.FromToRotation(component.transform.rotation * Vector3.up, norm);
+                //component.transform.Rotate(Quaternion.Euler(norm), Space.Self);
 
                 //flag = true;
                 //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
