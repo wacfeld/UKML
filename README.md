@@ -33,6 +33,12 @@ All changes are relative to Brutal difficulty
 - Beam attack parry window lowered from 0.5s to 0.25s
 </details>
 
+<details>
+<summary>Cerberus changes</summary>
+
+- Orb projectiles now bounce several times, creating a shockwave and explosion with each bounce
+</details>
+
 ## Manual Installation
 
 - Install [BepInEx](https://thunderstore.io/c/ultrakill/p/BepInEx/BepInExPack/) if you don't have it already
