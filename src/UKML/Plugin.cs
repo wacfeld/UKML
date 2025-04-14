@@ -284,7 +284,7 @@ class PatchCerbProj
             return true;
         }
         // if it's out of bounces then let it run its course
-        if(___difficulty >= 9)
+        if(___difficulty >= 10)
         {
             return true;
         }
