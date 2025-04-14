@@ -229,10 +229,6 @@ class PatchCerbThrow
             field.SetValue(component, 6);
             //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
 
-            // this is part of a roundabout hack to allow the orb to create its own shockwaves
-            // we leave our own EID in the list of already hit enemies to allow it to find us and use our shockwave asset
-            component.alreadyHitEnemies.Insert(0, ___eid);
-
             component.target = ___eid.target;
         }
         ___orbGrowing = false;
@@ -321,27 +317,7 @@ class PatchCerbProj
                 // increase bounce counter
                 ___difficulty++;
 
-                // create a shockwave
-                // we hacked the cerb to put a copy of itself in alreadyHitEnemies, so we find it there and grab its shockwave asset
-                if(__instance.alreadyHitEnemies.Count > 0)
-                {
-                    Console.WriteLine("found an eid!");
-                    EnemyIdentifier eid = __instance.alreadyHitEnemies[0];
-                    StatueBoss cerb = eid.statue.GetComponent<StatueBoss>();
-                    Console.WriteLine("reflecting on my actions");
-                    if(cerb != null)
-                    {
-                        // use reflection to get the asset
-                        var field = typeof(StatueBoss).GetField("stompWave", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-                        UnityEngine.AddressableAssets.AssetReference stompwave = (UnityEngine.AddressableAssets.AssetReference) field.GetValue(cerb);
-                        GameObject currentStompWave = UnityEngine.Object.Instantiate(stompwave.ToAsset(), __instance.transform.position, Quaternion.identity);
-                        Console.WriteLine("created shockwave!");
 
-                    } else
-                    {
-                        Console.WriteLine("cerb is null!");
-                    }
-                }
                 //flag = true;
                 //GameObject gameObject2 = UnityEngine.Object.Instantiate(sawBounceEffect, array[i].point, Quaternion.LookRotation(array[i].normal));
 
