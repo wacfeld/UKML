@@ -1,11 +1,13 @@
 ﻿namespace UKML;
 
 using System;
-using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.ResourceLocations;
 
 [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
@@ -19,9 +21,31 @@ public class Plugin : BaseUnityPlugin
     // TODO stop game from muting non-error messages at the start, and also figure out how to log messages from inside patches
     public ManualLogSource Log => Logger;
 
+    private static bool addressableInit = false;
+    public static GameObject shockwave;
+
+    public static T LoadObject<T>(string path)
+    {
+        if (!addressableInit)
+        {
+            Addressables.InitializeAsync().WaitForCompletion();
+            addressableInit = true;
+        }
+        return Addressables.LoadAssetAsync<T>(path).WaitForCompletion();
+    }
+
+    private void LoadAll()
+    {
+        shockwave = LoadObject<GameObject>("Assets/Prefabs/Attacks and Projectiles/PhysicalShockwave.prefab");
+        Console.WriteLine("loaded asset!");
+    }
+
     private void Awake()
     {
         harmony.PatchAll();
+
+        LoadAll();
+
         Log.LogInfo($"Loaded {PLUGIN_NAME} v{PLUGIN_VERSION}");
     }
 }
