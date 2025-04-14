@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>UKML</AssemblyName>
     <Description>My take on the currently unreleased ULTRAKILL Must Die difficulty</Description>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>
@@ -20,8 +20,10 @@
     <PackageReference Include="UnityEngine.Modules" Version="2022.3.28" IncludeAssets="compile" />
     <Reference Include="lib\BepInEx.dll" />
     <Reference Include="lib\0Harmony.dll" />
-	
-	<Reference Include="lib\Assembly-CSharp.dll" />
+    
+    <Reference Include="lib\Assembly-CSharp.dll" />
+    <Reference Include="lib\Unity.Addressables.dll" />
+    <Reference Include="lib\Unity.ResourceManager.dll" />
 
   </ItemGroup>
 

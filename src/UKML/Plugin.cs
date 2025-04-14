@@ -5,22 +5,49 @@ using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+//using UnityEngine.AddressableAssets.ResourceLocators;
+//using UnityEngine.ResourceManagement.ResourceLocations;
 
 [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
 public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.2.0";
+    public const string PLUGIN_VERSION = "0.3.0";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
     // TODO stop game from muting non-error messages at the start, and also figure out how to log messages from inside patches
     public ManualLogSource Log => Logger;
 
+    private static bool addressableInit = false;
+    public static GameObject shockwave;
+    public static GameObject explosion;
+
+    public static T LoadObject<T>(string path)
+    {
+        if (!addressableInit)
+        {
+            Addressables.InitializeAsync().WaitForCompletion();
+            addressableInit = true;
+        }
+        return Addressables.LoadAssetAsync<T>(path).WaitForCompletion();
+    }
+
+    private void LoadAll()
+    {
+        shockwave = LoadObject<GameObject>("Assets/Prefabs/Attacks and Projectiles/PhysicalShockwave.prefab");
+        explosion = LoadObject<GameObject>("Assets/Prefabs/Attacks and Projectiles/Explosions/Explosion.prefab");
+        Console.WriteLine("loaded assets!");
+    }
+
     private void Awake()
     {
         harmony.PatchAll();
+
+        LoadAll();
+
         Log.LogInfo($"Loaded {PLUGIN_NAME} v{PLUGIN_VERSION}");
     }
 }
@@ -164,49 +191,6 @@ class PatchSchismBeam
     }
 }
 
-//[HarmonyPatch(typeof(EnemyIdentifier))]
-//[HarmonyPatch("UpdateModifiers")]
-//class PatchEIDUpdate
-//{
-//    static void postfix(EnemyIdentifier __instance)
-//    {
-//        __instance.totalSpeedModifier = 2f;
-//        Console.WriteLine("I have been called");
-//    }
-//}
-
-//[HarmonyPatch(typeof(EnemyIdentifier))]
-//[HarmonyPatch("IsTypeFriendly")]
-//class PatchFriendly
-//{
-//    static void Postfix(ref bool __result)
-//    {
-//        Console.WriteLine("I have been called");
-//        __result = true;
-//    }
-//}
-
-//[HarmonyPatch(typeof(Turret))]
-//[HarmonyPatch("Start")]
-//class PatchTurret
-//{
-//    static void Postfix()
-//    {
-//        Console.WriteLine("i'm a turret!");
-//    }
-//}
-
-//[HarmonyPatch(typeof(EnemyIdentifier))]
-//[HarmonyPatch("Update")]
-//class PatchEID
-//{
-//    static void Postfix(EnemyIdentifier __instance)
-//    {
-//        Console.WriteLine("hi");
-//        //__instance.immuneToFriendlyFire = true;
-//    }
-//}
-
 [HarmonyPatch(typeof(Projectile))]
 [HarmonyPatch("Start")]
 class PatchProjectileStart
@@ -244,67 +228,155 @@ class PatchCollided
     }
 }
 
-//[HarmonyPatch(typeof(Projectile))]
+// we completely overwrite OrbSpawn so that we can set the difficulty field of the projectile we create
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("OrbSpawn")]
+class PatchCerbThrow
+{
+    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, ref int ___difficulty, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
+    {
+        // do normal stuff if on lower difficulties
+        if(___difficulty < 4)
+        {
+            return true;
+        }
+
+        //Console.WriteLine("spawning orb!");
+
+        GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
+        gameObject.transform.LookAt(___projectedPlayerPos);
+
+        gameObject.GetComponent<Rigidbody>().AddForce(gameObject.transform.forward * 20000f);
+
+        if (gameObject.TryGetComponent<Projectile>(out var component))
+        {
+            // set projectile's difficulty to 6 to indicate it's a cerb ball
+            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
+            field.SetValue(component, 6);
+            //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
+
+            component.target = ___eid.target;
+        }
+        ___orbGrowing = false;
+        ___orbLight.range = 0f;
+        ___part.Play();
+
+        // skip the original
+        return false;
+    }
+}
+
+// make cerb projectiles bounce off surfaces like sawblades
+[HarmonyPatch(typeof(Projectile))]
+[HarmonyPatch("FixedUpdate")]
+class PatchCerbProj
+{
+    static bool Prefix(Projectile __instance, ref int ___difficulty, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
+    {
+        // don't run if ball has been parried
+        if(__instance.parried || __instance.boosted)
+        {
+            return true;
+        }
+        // don't run if not cerb projectile
+        if(___difficulty < 6)
+        {
+            return true;
+        }
+        // if it's out of bounces then let it run its course
+        if(___difficulty >= 10)
+        {
+            return true;
+        }
+
+        // otherwise run our own code and skip the original
+        if (!__instance.hittingPlayer && !__instance.undeflectable && !__instance.decorative && __instance.speed != 0f && __instance.homingType == HomingType.None)
+        {
+            ___rb.velocity = __instance.transform.forward * __instance.speed;
+        }
+        if (__instance.decorative && __instance.transform.localScale.x < ___origScale.x)
+        {
+            ___aud.pitch = __instance.transform.localScale.x / ___origScale.x * 2.8f;
+            __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
+        }
+
+        //if (__instance.precheckForCollisions)
+        //{
+        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
+        //    layerMask = (int)layerMask | 4;
+        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
+        //    {
+        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
+
+        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
+        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
+        //        //Collided(hitInfo.collider);
+        //    }
+        //}
+
+        // adapted from Nail.FixedUpdate()
+        RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
+        if (array == null || array.Length == 0)
+        {
+            return false;
+        }
+        Array.Sort(array, (RaycastHit x, RaycastHit y) => x.distance.CompareTo(y.distance));
+        for (int i = 0; i < array.Length; i++)
+        {
+            GameObject gameObject = array[i].transform.gameObject;
+            if ((gameObject.layer == 10 || gameObject.layer == 11) && (gameObject.gameObject.CompareTag("Head") || gameObject.gameObject.CompareTag("Body") || gameObject.gameObject.CompareTag("Limb") || gameObject.gameObject.CompareTag("EndLimb") || gameObject.gameObject.CompareTag("Enemy")))
+            {
+                return false;
+            }
+            else
+            {
+                if (!LayerMaskDefaults.IsMatchingLayer(gameObject.layer, LMD.Environment) && gameObject.layer != 26 && !gameObject.CompareTag("Armor"))
+                {
+                    continue;
+                }
+
+                // bounce the ball
+                //base.transform.position = array[i].point;
+                Console.WriteLine("bouncing!");
+                Vector3 norm = array[i].normal;
+                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude / 2;
+               
+                // increase bounce counter
+                ___difficulty++;
+
+                // create a shockwave!
+                GameObject wave = UnityEngine.Object.Instantiate(Plugin.shockwave, ___rb.transform.position, Quaternion.identity);
+                PhysicalShockwave component = wave.GetComponent<PhysicalShockwave>();
+                component.damage = 25;
+                component.speed = 75f;
+                component.maxSize = 100f;
+                component.enemy = true;
+                component.enemyType = EnemyType.Cerberus;
+                component.transform.rotation = Quaternion.FromToRotation(component.transform.rotation * Vector3.up, norm);
+
+                // create an explosion
+                GameObject explode = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity);
+                Explosion component2 = explode.GetComponent<Explosion>();
+                component2.maxSize *= 1.5f;
+                component2.damage = Mathf.RoundToInt(__instance.damage);
+                component2.enemy = true;
+                MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position);
+
+                break;
+            }
+        }
+
+        return false;
+    }
+}
+
+//[HarmonyPatch(typeof(StatueBoss))]
 //[HarmonyPatch("Update")]
-//class PatchProjectileUpdate
+//class PatchStatueBoss
 //{
-//    static void Postfix(Projectile __instance)
+//    static void Postfix(StatueBoss __instance)
 //    {
-//        if(__instance.friendly)
-//        {
-//            Console.WriteLine("I'm friendly!");
-//        }
-//    }
-//}
-
-//[HarmonyPatch(typeof(Zombie))]
-//[HarmonyPatch("Start")]
-//class PatchZombieStart
-//{
-//    static void Postfix(ref EnemyIdentifier ___eid)
-//    {
-//        Console.WriteLine("i'm a zombie!");
-//        Console.WriteLine("my EnemyType is " + ___eid.enemyType.ToString());
-//    }
-//}
-
-//[HarmonyPatch(typeof(ZombieIgnorizer))]
-//[HarmonyPatch("Start")]
-//class PatchZombieIgnorizerStart
-//{
-//    static void Postfix()
-//    {
-//        Console.WriteLine("i'm a ZombieIgnorizer!");
-//    }
-//}
-
-//[HarmonyPatch(typeof(ZombieMelee))]
-//[HarmonyPatch("Start")]
-//class PatchZombieMeleeStart
-//{
-//    static void Postfix()
-//    {
-//        Console.WriteLine("i'm a ZombieMelee!");
-//    }
-//}
-
-//[HarmonyPatch(typeof(ZombieProjectiles))]
-//[HarmonyPatch("Start")]
-//class PatchZombieProjectilesStart
-//{
-//    static void Postfix(ZombieProjectiles __instance)
-//    {
-//        Console.WriteLine("i'm a ZombieProjectiles!");
-//        Console.WriteLine("hasMelee: " + __instance.hasMelee.ToString());
-//    }
-//}
-
-//[HarmonyPatch(typeof(Punch))]
-//[HarmonyPatch("ParryProjectile")]
-//class PatchParryProjectile
-//{
-//    static void Postfix(Projectile proj)
-//    {
-//        proj.speed /= 20f;
+//        Console.WriteLine("i'm a statue boss!");
+//        __instance.OrbSpawn();
 //    }
 //}

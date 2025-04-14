@@ -19,8 +19,8 @@ All changes are relative to Brutal difficulty
 - Hard damage multiplier set to 100%
 - Non-homing projectile speed doubled
 - Homing projectile turning speed doubled
-- Enemy projectiles (including Schism beams) never damage enemies unless parried or redirected by explosions
-- Enemy-caused explosions never directly damage enemies (but can still light susceptible enemies on fire)
+- Enemy projectiles (including Schism beams) won't damage enemies unless parried or redirected by explosions
+- Enemy-caused explosions won't directly damage enemies (but can still light susceptible enemies on fire)
 </details>
 
 <details>
@@ -31,6 +31,12 @@ All changes are relative to Brutal difficulty
 - Enragement fixed to work independent of health
 - Every other beam attack is unparryable
 - Beam attack parry window lowered from 0.5s to 0.25s
+</details>
+
+<details>
+<summary>Cerberus changes</summary>
+
+- Orb projectiles now bounce several times, creating a shockwave and explosion with each bounce
 </details>
 
 ## Manual Installation
