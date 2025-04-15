@@ -18,7 +18,6 @@ public class Plugin : BaseUnityPlugin
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
-    // TODO stop game from muting non-error messages at the start, and also figure out how to log messages from inside patches
     public ManualLogSource Log => Logger;
 
     private static bool addressableInit = false;
@@ -104,38 +103,35 @@ class PatchMauriceUpdate
 [HarmonyPatch("BeamChargeEnd")]
 class PatchMauriceBeamChargeEnd
 {
-    // the game does not distinguish between difficulties >= 4
-    // we take advantage of this by using the variable to keep track of how many times the beam has fired
-    // odd numbers are parryable, even numbers are parryable
+    // store the number of beams fired for each SpiderBody instance
+    // 0 = parryable, 1 = unparryable
+    public static Dictionary<int, bool> beamParryable;
 
-    // we increment the difficulty in the prefix and then adjust the contents of SpiderBody.spark accordingly
-    // this lets us avoid having to overwrite the entirety of BeamChargeEnd just to change the spark color
-    static void Prefix(SpiderBody __instance, ref int ___difficulty)
+    static void Prefix(SpiderBody __instance)
     {
-        if (___difficulty < 4)
+        int id = __instance.GetInstance.ID();
+        if(!beamParryable.ContainsKey(id))
         {
-            return;
-        }
-        ___difficulty++;
-        if (___difficulty >= 1000) // prevent overflow in extreme cases
-        {
-            ___difficulty -= 500;
+            beamParryable.add(id, false);
         }
 
-        if (___difficulty % 2 == 0)
+        beamParryable[id] = !beamParryable[id]
+
+        if (beamParryable[id])
         {
-            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash;
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash;
         }
         else
         {
-            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash;
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash;
         }
     }
 
     // we do the actually parryable field setting in the postfix
-    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
+    static void Postfix(SpiderBody __instance, ref bool ___parryable, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
     {
-        if(___difficulty % 2 == 0)
+        int id = __instance.GetInstance.ID();
+        if(beamParryable[id])
         {
             ___parryable = false;
             //Console.WriteLine("unparryable!");
