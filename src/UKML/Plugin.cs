@@ -112,7 +112,7 @@ class PatchMauriceBeamChargeEnd
         int id = __instance.GetInstance.ID();
         if(!beamParryable.ContainsKey(id))
         {
-            beamParryable.add(id, false);
+            beamParryable.Add(id, false);
         }
 
         beamParryable[id] = !beamParryable[id]
@@ -229,14 +229,10 @@ class PatchCollided
 [HarmonyPatch("OrbSpawn")]
 class PatchCerbThrow
 {
-    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, ref int ___difficulty, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
-    {
-        // do normal stuff if on lower difficulties
-        if(___difficulty < 4)
-        {
-            return true;
-        }
+    public static Dictionary<int, int> orbBounces;
 
+    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
+    {
         //Console.WriteLine("spawning orb!");
 
         GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
@@ -246,10 +242,8 @@ class PatchCerbThrow
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
-            // set projectile's difficulty to 6 to indicate it's a cerb ball
-            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-            field.SetValue(component, 6);
-            //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
+            int id = component.GetInstance.ID();
+            orbBounces.Add(id, 0);
 
             component.target = ___eid.target;
         }
