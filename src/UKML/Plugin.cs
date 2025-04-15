@@ -55,8 +55,7 @@ public class Plugin : BaseUnityPlugin
 [HarmonyPatch("GetHurt")]
 class PatchGetHurt
 {
-    // TODO make this only apply to difficulty 5
-    // set hardDamageMultiplier to 1
+    // set hardDamageMultiplier to 100%
     static void Prefix(ref float hardDamageMultiplier)
     {
         hardDamageMultiplier = 1f;
@@ -224,7 +223,7 @@ class PatchCollided
     }
 }
 
-// we completely overwrite OrbSpawn so that we can set the difficulty field of the projectile we create
+// TODO check if OrbSpawn still needs to be completely overwritten
 [HarmonyPatch(typeof(StatueBoss))]
 [HarmonyPatch("OrbSpawn")]
 class PatchCerbThrow
@@ -272,20 +271,22 @@ class PatchCerbThrow
 [HarmonyPatch("FixedUpdate")]
 class PatchCerbProj
 {
-    static bool Prefix(Projectile __instance, ref int ___difficulty, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
+    static bool Prefix(Projectile __instance, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
     {
         // don't run if ball has been parried
         if(__instance.parried || __instance.boosted)
         {
             return true;
         }
+
+        int id = __instance.GetInstance.ID();
         // don't run if not cerb projectile
-        if(___difficulty < 6)
+        if(!PatchCerbThrow.orbBounces.ContainsKey(id))
         {
             return true;
         }
         // if it's out of bounces then let it run its course
-        if(___difficulty >= 10)
+        if(PatchCerbThrow.orbBounces[id] >= 5)
         {
             return true;
         }
@@ -342,7 +343,7 @@ class PatchCerbProj
                 ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
                
                 // increase bounce counter
-                ___difficulty++;
+                PatchCerbThrow.orbBounces[id]++;
 
                 // create a shockwave!
                 GameObject wave = UnityEngine.Object.Instantiate(Plugin.shockwave, ___rb.transform.position, Quaternion.identity);
@@ -374,9 +375,10 @@ class PatchCerbProj
 [HarmonyPatch("Start")]
 class PatchCerbOrbStart
 {
-    static void Postfix(Projectile __instance, ref int ___difficulty)
+    static void Postfix(Projectile __instance)
     {
-        if(___difficulty >= 6)
+        int id = __instance.GetInstance.ID();
+        if(PatchCerbThrow.orbBounces.ContainsKey(id))
         {
             __instance.ignoreExplosions = true;
         }
@@ -392,9 +394,8 @@ class PatchExplosionOrb
         Projectile component = other.GetComponent<Projectile>();
         if(component != null)
         {
-            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-            int diff = (int) field.GetValue(component);
-            if (diff >= 6)
+            int id = component.GetInstance.ID();
+            if(PatchCerbThrow.orbBounces.ContainsKey(id))
             {
                 return false;
             }
