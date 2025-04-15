@@ -14,7 +14,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.3.0";
+    public const string PLUGIN_VERSION = "0.3.1";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -266,6 +266,17 @@ class PatchCerbThrow
     }
 }
 
+//[HarmonyPatch(typeof(Projectile))]
+//[HarmonyPatch("Update")]
+//class PatchCerbUpdate
+//{
+//    static void Prefix(Projectile __instance)
+//    {
+//        Console.WriteLine("parried = " + __instance.parried);
+//        Console.WriteLine("boosted = " + __instance.boosted);
+//    }
+//}
+
 // make cerb projectiles bounce off surfaces like sawblades
 [HarmonyPatch(typeof(Projectile))]
 [HarmonyPatch("FixedUpdate")]
@@ -337,9 +348,8 @@ class PatchCerbProj
 
                 // bounce the ball
                 //base.transform.position = array[i].point;
-                Console.WriteLine("bouncing!");
                 Vector3 norm = array[i].normal;
-                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude / 2;
+                ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
                
                 // increase bounce counter
                 ___difficulty++;
@@ -367,6 +377,39 @@ class PatchCerbProj
         }
 
         return false;
+    }
+}
+
+[HarmonyPatch(typeof(Projectile))]
+[HarmonyPatch("Start")]
+class PatchCerbOrbStart
+{
+    static void Postfix(Projectile __instance, ref int ___difficulty)
+    {
+        if(___difficulty >= 6)
+        {
+            __instance.ignoreExplosions = true;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(Explosion))]
+[HarmonyPatch("Collide")]
+class PatchExplosionOrb
+{
+    static bool Prefix(Collider other)
+    {
+        Projectile component = other.GetComponent<Projectile>();
+        if(component != null)
+        {
+            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
+            int diff = (int) field.GetValue(component);
+            if (diff >= 6)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
