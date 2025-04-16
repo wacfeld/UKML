@@ -8,6 +8,8 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Bindings;
+
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
 
@@ -358,11 +360,16 @@ class PatchCerbProj
                 component.transform.rotation = Quaternion.FromToRotation(component.transform.rotation * Vector3.up, norm);
 
                 // create an explosion
-                GameObject explode = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity);
-                Explosion component2 = explode.GetComponent<Explosion>();
-                component2.maxSize *= 1.5f;
-                component2.damage = Mathf.RoundToInt(__instance.damage);
-                component2.enemy = true;
+                Explosion[] explosions = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity).GetComponentsInChildren<Explosion>();
+                foreach (Explosion component2 in explosions)
+                {
+                    component2.maxSize *= 1.5f;
+                    component2.damage = Mathf.RoundToInt(__instance.damage);
+                    component2.enemy = true;
+                    component2.canHit = AffectedSubjects.PlayerOnly;
+                    component2.enemyDamageMultiplier = 0;
+                }
+
                 MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position);
 
                 break;
