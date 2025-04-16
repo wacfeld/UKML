@@ -1,6 +1,8 @@
 ﻿namespace UKML;
 
 using System;
+using System.Collections.Generic;
+
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -104,17 +106,17 @@ class PatchMauriceBeamChargeEnd
 {
     // store the number of beams fired for each SpiderBody instance
     // 0 = parryable, 1 = unparryable
-    public static Dictionary<int, bool> beamParryable;
+    public static Dictionary<int, bool> beamParryable = new Dictionary<int, bool>();
 
     static void Prefix(SpiderBody __instance)
     {
-        int id = __instance.GetInstance.ID();
+        int id = __instance.GetInstanceID();
         if(!beamParryable.ContainsKey(id))
         {
             beamParryable.Add(id, false);
         }
 
-        beamParryable[id] = !beamParryable[id]
+        beamParryable[id] = !beamParryable[id];
 
         if (beamParryable[id])
         {
@@ -129,7 +131,7 @@ class PatchMauriceBeamChargeEnd
     // we do the actually parryable field setting in the postfix
     static void Postfix(SpiderBody __instance, ref bool ___parryable, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
     {
-        int id = __instance.GetInstance.ID();
+        int id = __instance.GetInstanceID();
         if(beamParryable[id])
         {
             ___parryable = false;
@@ -228,7 +230,7 @@ class PatchCollided
 [HarmonyPatch("OrbSpawn")]
 class PatchCerbThrow
 {
-    public static Dictionary<int, int> orbBounces;
+    public static Dictionary<int, int> orbBounces = new Dictionary<int, int>();
 
     static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
     {
@@ -241,7 +243,7 @@ class PatchCerbThrow
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
-            int id = component.GetInstance.ID();
+            int id = component.GetInstanceID();
             orbBounces.Add(id, 0);
 
             component.target = ___eid.target;
@@ -279,7 +281,7 @@ class PatchCerbProj
             return true;
         }
 
-        int id = __instance.GetInstance.ID();
+        int id = __instance.GetInstanceID();
         // don't run if not cerb projectile
         if(!PatchCerbThrow.orbBounces.ContainsKey(id))
         {
