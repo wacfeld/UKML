@@ -377,7 +377,7 @@ class PatchCerbOrbStart
 {
     static void Postfix(Projectile __instance)
     {
-        int id = __instance.GetInstance.ID();
+        int id = __instance.GetInstanceID();
         if(PatchCerbThrow.orbBounces.ContainsKey(id))
         {
             __instance.ignoreExplosions = true;
@@ -385,16 +385,23 @@ class PatchCerbOrbStart
     }
 }
 
+// make explosions ignore cerb balls so that bouncing works
 [HarmonyPatch(typeof(Explosion))]
 [HarmonyPatch("Collide")]
 class PatchExplosionOrb
 {
-    static bool Prefix(Collider other)
+    static bool Prefix(Collider other, Explosion __instance)
     {
+        // player-caused explosions will still affect cerb balls
+        if(__instance.enemy == false)
+        {
+            return true;
+        }
+
         Projectile component = other.GetComponent<Projectile>();
         if(component != null)
         {
-            int id = component.GetInstance.ID();
+            int id = component.GetInstanceID();
             if(PatchCerbThrow.orbBounces.ContainsKey(id))
             {
                 return false;
