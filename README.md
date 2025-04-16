@@ -37,7 +37,7 @@ All changes are relative to Brutal difficulty
 <summary>Cerberus changes</summary>
 
 - Orb projectiles now bounce several times, creating a shockwave and explosion with each bounce
-	- Orb projectiles are no longer affected by explosions
+- Orb projectiles are no longer affected by enemy-caused explosions
 </details>
 
 ## Manual Installation
