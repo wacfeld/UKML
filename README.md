@@ -5,7 +5,7 @@ Work in progress.
 
 ## Usage
 
-At the moment, (almost) all changes are applied universally.
+At the moment, all changes are applied universally.
 Therefore to play the new difficulty, simply select Brutal difficulty with the mod installed.
 A proper difficulty selection screen is coming in a future update.
 
@@ -37,7 +37,7 @@ All changes are relative to Brutal difficulty
 <summary>Cerberus changes</summary>
 
 - Orb projectiles now bounce several times, creating a shockwave and explosion with each bounce
-	- Orb projectiles are no longer affected by explosions
+- Orb projectiles are no longer affected by enemy-caused explosions
 </details>
 
 ## Manual Installation

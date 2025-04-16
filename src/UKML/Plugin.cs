@@ -1,11 +1,15 @@
 ﻿namespace UKML;
 
 using System;
+using System.Collections.Generic;
+
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Bindings;
+
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
 
@@ -14,11 +18,10 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.3.1";
+    public const string PLUGIN_VERSION = "0.3.2";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
-    // TODO stop game from muting non-error messages at the start, and also figure out how to log messages from inside patches
     public ManualLogSource Log => Logger;
 
     private static bool addressableInit = false;
@@ -56,8 +59,7 @@ public class Plugin : BaseUnityPlugin
 [HarmonyPatch("GetHurt")]
 class PatchGetHurt
 {
-    // TODO make this only apply to difficulty 5
-    // set hardDamageMultiplier to 1
+    // set hardDamageMultiplier to 100%
     static void Prefix(ref float hardDamageMultiplier)
     {
         hardDamageMultiplier = 1f;
@@ -104,38 +106,35 @@ class PatchMauriceUpdate
 [HarmonyPatch("BeamChargeEnd")]
 class PatchMauriceBeamChargeEnd
 {
-    // the game does not distinguish between difficulties >= 4
-    // we take advantage of this by using the variable to keep track of how many times the beam has fired
-    // odd numbers are parryable, even numbers are parryable
+    // store the number of beams fired for each SpiderBody instance
+    // 0 = parryable, 1 = unparryable
+    public static Dictionary<int, bool> beamParryable = new Dictionary<int, bool>();
 
-    // we increment the difficulty in the prefix and then adjust the contents of SpiderBody.spark accordingly
-    // this lets us avoid having to overwrite the entirety of BeamChargeEnd just to change the spark color
-    static void Prefix(SpiderBody __instance, ref int ___difficulty)
+    static void Prefix(SpiderBody __instance)
     {
-        if (___difficulty < 4)
+        int id = __instance.GetInstanceID();
+        if(!beamParryable.ContainsKey(id))
         {
-            return;
-        }
-        ___difficulty++;
-        if (___difficulty >= 1000) // prevent overflow in extreme cases
-        {
-            ___difficulty -= 500;
+            beamParryable.Add(id, false);
         }
 
-        if (___difficulty % 2 == 0)
+        beamParryable[id] = !beamParryable[id];
+
+        if (beamParryable[id])
         {
-            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash;
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash;
         }
         else
         {
-            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash;
+            __instance.spark = MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash;
         }
     }
 
     // we do the actually parryable field setting in the postfix
-    static void Postfix(SpiderBody __instance, ref bool ___parryable, ref int ___difficulty, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
+    static void Postfix(SpiderBody __instance, ref bool ___parryable, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
     {
-        if(___difficulty % 2 == 0)
+        int id = __instance.GetInstanceID();
+        if(!beamParryable[id])
         {
             ___parryable = false;
             //Console.WriteLine("unparryable!");
@@ -228,19 +227,15 @@ class PatchCollided
     }
 }
 
-// we completely overwrite OrbSpawn so that we can set the difficulty field of the projectile we create
+// TODO check if OrbSpawn still needs to be completely overwritten
 [HarmonyPatch(typeof(StatueBoss))]
 [HarmonyPatch("OrbSpawn")]
 class PatchCerbThrow
 {
-    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, ref int ___difficulty, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
-    {
-        // do normal stuff if on lower difficulties
-        if(___difficulty < 4)
-        {
-            return true;
-        }
+    public static Dictionary<int, int> orbBounces = new Dictionary<int, int>();
 
+    static bool Prefix(StatueBoss __instance, Light ___orbLight, Vector3 ___projectedPlayerPos, EnemyIdentifier ___eid, ref bool ___orbGrowing, ParticleSystem ___part)
+    {
         //Console.WriteLine("spawning orb!");
 
         GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
@@ -250,10 +245,8 @@ class PatchCerbThrow
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
-            // set projectile's difficulty to 6 to indicate it's a cerb ball
-            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-            field.SetValue(component, 6);
-            //Console.WriteLine("projectile has difficulty " + field.GetValue(component));
+            int id = component.GetInstanceID();
+            orbBounces.Add(id, 0);
 
             component.target = ___eid.target;
         }
@@ -282,20 +275,22 @@ class PatchCerbThrow
 [HarmonyPatch("FixedUpdate")]
 class PatchCerbProj
 {
-    static bool Prefix(Projectile __instance, ref int ___difficulty, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
+    static bool Prefix(Projectile __instance, Rigidbody ___rb, Vector3 ___origScale, AudioSource ___aud, ref float ___radius)
     {
         // don't run if ball has been parried
         if(__instance.parried || __instance.boosted)
         {
             return true;
         }
+
+        int id = __instance.GetInstanceID();
         // don't run if not cerb projectile
-        if(___difficulty < 6)
+        if(!PatchCerbThrow.orbBounces.ContainsKey(id))
         {
             return true;
         }
         // if it's out of bounces then let it run its course
-        if(___difficulty >= 10)
+        if(PatchCerbThrow.orbBounces[id] >= 5)
         {
             return true;
         }
@@ -352,7 +347,7 @@ class PatchCerbProj
                 ___rb.velocity = Vector3.Reflect(___rb.velocity.normalized, array[i].normal) * ___rb.velocity.magnitude;
                
                 // increase bounce counter
-                ___difficulty++;
+                PatchCerbThrow.orbBounces[id]++;
 
                 // create a shockwave!
                 GameObject wave = UnityEngine.Object.Instantiate(Plugin.shockwave, ___rb.transform.position, Quaternion.identity);
@@ -365,11 +360,16 @@ class PatchCerbProj
                 component.transform.rotation = Quaternion.FromToRotation(component.transform.rotation * Vector3.up, norm);
 
                 // create an explosion
-                GameObject explode = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity);
-                Explosion component2 = explode.GetComponent<Explosion>();
-                component2.maxSize *= 1.5f;
-                component2.damage = Mathf.RoundToInt(__instance.damage);
-                component2.enemy = true;
+                Explosion[] explosions = UnityEngine.Object.Instantiate(Plugin.explosion, ___rb.transform.position, Quaternion.identity).GetComponentsInChildren<Explosion>();
+                foreach (Explosion component2 in explosions)
+                {
+                    component2.maxSize *= 1.5f;
+                    component2.damage = Mathf.RoundToInt(__instance.damage);
+                    component2.enemy = true;
+                    component2.canHit = AffectedSubjects.PlayerOnly;
+                    component2.enemyDamageMultiplier = 0;
+                }
+
                 MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position);
 
                 break;
@@ -384,27 +384,34 @@ class PatchCerbProj
 [HarmonyPatch("Start")]
 class PatchCerbOrbStart
 {
-    static void Postfix(Projectile __instance, ref int ___difficulty)
+    static void Postfix(Projectile __instance)
     {
-        if(___difficulty >= 6)
+        int id = __instance.GetInstanceID();
+        if(PatchCerbThrow.orbBounces.ContainsKey(id))
         {
             __instance.ignoreExplosions = true;
         }
     }
 }
 
+// make explosions ignore cerb balls so that bouncing works
 [HarmonyPatch(typeof(Explosion))]
 [HarmonyPatch("Collide")]
 class PatchExplosionOrb
 {
-    static bool Prefix(Collider other)
+    static bool Prefix(Collider other, Explosion __instance)
     {
+        // player-caused explosions will still affect cerb balls
+        if(__instance.enemy == false)
+        {
+            return true;
+        }
+
         Projectile component = other.GetComponent<Projectile>();
         if(component != null)
         {
-            var field = typeof(Projectile).GetField("difficulty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.GetField | System.Reflection.BindingFlags.Instance);
-            int diff = (int) field.GetValue(component);
-            if (diff >= 6)
+            int id = component.GetInstanceID();
+            if(PatchCerbThrow.orbBounces.ContainsKey(id))
             {
                 return false;
             }
