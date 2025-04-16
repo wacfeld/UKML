@@ -132,7 +132,7 @@ class PatchMauriceBeamChargeEnd
     static void Postfix(SpiderBody __instance, ref bool ___parryable, Vector3 ___predictedPlayerPos, EnemyIdentifier ___eid)
     {
         int id = __instance.GetInstanceID();
-        if(beamParryable[id])
+        if(!beamParryable[id])
         {
             ___parryable = false;
             //Console.WriteLine("unparryable!");
