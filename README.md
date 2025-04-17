@@ -5,9 +5,8 @@ Work in progress.
 
 ## Usage
 
-At the moment, all changes are applied universally.
+All changes are applied universally.
 Therefore to play the new difficulty, simply select Brutal difficulty with the mod installed.
-A proper difficulty selection screen is coming in a future update.
 
 ## Current features
 
