@@ -306,20 +306,6 @@ class PatchCerbProj
             __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
         }
 
-        //if (__instance.precheckForCollisions)
-        //{
-        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
-        //    layerMask = (int)layerMask | 4;
-        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
-        //    {
-        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
-
-        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
-        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
-        //        //Collided(hitInfo.collider);
-        //    }
-        //}
-
         // adapted from Nail.FixedUpdate()
         RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
         if (array == null || array.Length == 0)
@@ -455,6 +441,37 @@ class PatchCerbEnrage
                     return;
                 }
             }
+        }
+    }
+}
+
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("StompHit")]
+class PatchCerbStomp
+{
+    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid)
+    {
+        float[] angles = { 45f, 135f };
+        for(int i = 0; i < 2; i++)
+        {
+            ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
+            PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
+            component.transform.rotation = __instance.transform.rotation;
+            component.transform.Rotate(Vector3.forward * angles[i], Space.Self);
+            component.damage = 25;
+            component.speed = 75f;
+            if(i != 0)
+            {
+                //component.speed /= 1 + i * 2;
+                if(component.TryGetComponent<AudioSource>(out var component2))
+                {
+                    component2.enabled = false;
+                }
+            }
+            component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
+            component.maxSize = 100f;
+            component.enemy = true;
+            component.enemyType = EnemyType.Cerberus;
         }
     }
 }
