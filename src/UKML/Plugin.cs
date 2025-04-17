@@ -241,7 +241,7 @@ class PatchCerbThrow
         GameObject gameObject = UnityEngine.Object.Instantiate(__instance.orbProjectile.ToAsset(), new Vector3(___orbLight.transform.position.x, __instance.transform.position.y + 3.5f, ___orbLight.transform.position.z), Quaternion.identity);
         gameObject.transform.LookAt(___projectedPlayerPos);
 
-        gameObject.GetComponent<Rigidbody>().AddForce(gameObject.transform.forward * 60000f);
+        gameObject.GetComponent<Rigidbody>().AddForce(gameObject.transform.forward * 40000f);
 
         if (gameObject.TryGetComponent<Projectile>(out var component))
         {
