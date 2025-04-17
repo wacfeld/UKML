@@ -8,7 +8,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.Bindings;
+using System.Reflection;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -420,13 +420,41 @@ class PatchExplosionOrb
     }
 }
 
-//[HarmonyPatch(typeof(StatueBoss))]
-//[HarmonyPatch("Update")]
-//class PatchStatueBoss
-//{
-//    static void Postfix(StatueBoss __instance)
-//    {
-//        Console.WriteLine("i'm a statue boss!");
-//        __instance.OrbSpawn();
-//    }
-//}
+// check the health of all other present cerbs, enrage if any are below half
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Update")]
+class PatchCerbEnrage
+{
+    static void Postfix(StatueBoss __instance)
+    {
+        // no need to check anything if already enraged
+        if(__instance.enraged)
+        {
+            return;
+        }
+
+        int id = __instance.GetInstanceID();
+
+        StatueBoss[] cerbs = (StatueBoss[]) Resources.FindObjectsOfTypeAll(typeof(StatueBoss));
+        Console.WriteLine("there are " + cerbs.Length + " cerbs");
+        foreach(StatueBoss c in cerbs)
+        {
+            int other_id = c.GetInstanceID();
+            if(other_id == id)
+            {
+                continue;
+            }
+
+            var field = typeof(StatueBoss).GetField("st", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+            Statue st = (Statue) field.GetValue(c);
+            if(st != null)
+            {
+                if(st.health <= st.originalHealth/2)
+                {
+                    __instance.EnrageDelayed();
+                    return;
+                }
+            }
+        }
+    }
+}
