@@ -8,7 +8,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.Bindings;
+using System.Reflection;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -18,7 +18,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.3.2";
+    public const string PLUGIN_VERSION = "0.4.0";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -306,20 +306,6 @@ class PatchCerbProj
             __instance.transform.localScale = Vector3.Slerp(__instance.transform.localScale, ___origScale, Time.deltaTime * __instance.speed);
         }
 
-        //if (__instance.precheckForCollisions)
-        //{
-        //    LayerMask layerMask = LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment);
-        //    layerMask = (int)layerMask | 4;
-        //    if (Physics.SphereCast(__instance.transform.position, ___radius, ___rb.velocity.normalized, out var hitInfo, ___rb.velocity.magnitude * Time.fixedDeltaTime, layerMask))
-        //    {
-        //        __instance.transform.position = __instance.transform.position + ___rb.velocity.normalized * hitInfo.distance;
-
-        //        MethodInfo meth = __instance.GetType().GetMethod("Collided", BindingFlags.NonPublic | BindingFlags.Instance);
-        //        meth.Invoke(__instance, new object[] { hitInfo.collider });
-        //        //Collided(hitInfo.collider);
-        //    }
-        //}
-
         // adapted from Nail.FixedUpdate()
         RaycastHit[] array = ___rb.SweepTestAll(___rb.velocity.normalized, ___rb.velocity.magnitude * Time.fixedDeltaTime, QueryTriggerInteraction.Ignore);
         if (array == null || array.Length == 0)
@@ -420,13 +406,171 @@ class PatchExplosionOrb
     }
 }
 
-//[HarmonyPatch(typeof(StatueBoss))]
-//[HarmonyPatch("Update")]
-//class PatchStatueBoss
-//{
-//    static void Postfix(StatueBoss __instance)
-//    {
-//        Console.WriteLine("i'm a statue boss!");
-//        __instance.OrbSpawn();
-//    }
-//}
+// check the health of all other present cerbs, enrage if any are below half
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Update")]
+class PatchCerbEnrage
+{
+    static void Postfix(StatueBoss __instance)
+    {
+        // no need to check anything if already enraged
+        if(__instance.enraged)
+        {
+            return;
+        }
+
+        int id = __instance.GetInstanceID();
+
+        StatueBoss[] cerbs = (StatueBoss[]) Resources.FindObjectsOfTypeAll(typeof(StatueBoss));
+        foreach(StatueBoss c in cerbs)
+        {
+            int other_id = c.GetInstanceID();
+            if(other_id == id)
+            {
+                continue;
+            }
+
+            var field = typeof(StatueBoss).GetField("st", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+            Statue st = (Statue) field.GetValue(c);
+            if(st != null)
+            {
+                if(st.health < st.originalHealth/2)
+                {
+                    __instance.EnrageDelayed();
+                    return;
+                }
+            }
+        }
+    }
+}
+
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("StompHit")]
+class PatchCerbStomp
+{
+    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid)
+    {
+        ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
+        PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
+        component.transform.rotation = __instance.transform.rotation;
+        component.transform.Rotate(Vector3.forward * 90, Space.Self);
+        component.damage = 25;
+        component.speed = 75f;
+        if (component.TryGetComponent<AudioSource>(out var component2))
+        {
+            component2.enabled = false;
+        }
+        component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
+        component.maxSize = 100f;
+        component.enemy = true;
+        component.enemyType = EnemyType.Cerberus;
+    }
+}
+
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Tackle")]
+class PatchTackle
+{
+    static void Postfix(StatueBoss __instance, ref int ___extraTackles)
+    {
+        if(__instance.enraged)
+        {
+            ___extraTackles++;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Dash")]
+class PatchDash
+{
+    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid, ref int ___extraTackles)
+    {
+        float angle = 45f;
+        if(__instance.enraged)
+        {
+            if(___extraTackles == 0)
+            {
+                angle = 0f;
+            }
+            else
+            {
+                angle = (___extraTackles == 0) ? 45f : 135f;
+            }
+        }
+        else
+        {
+            angle = (___extraTackles == 1) ? 45f : 135f;
+        }
+
+        ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
+        PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
+        component.transform.rotation = __instance.transform.rotation;
+        component.transform.Rotate(Vector3.forward * angle, Space.Self);
+        component.damage = 25;
+        component.speed = 75f;
+
+        component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
+        component.maxSize = 100f;
+        component.enemy = true;
+        component.enemyType = EnemyType.Cerberus;
+    }
+}
+
+// halve inter-dash cooldown
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("StopDash")]
+class PatchStopDash
+{
+    static void Postfix(StatueBoss __instance, ref float ___realSpeedModifier)
+    {
+        if (__instance.IsInvoking("DelayedTackle"))
+        {
+            __instance.CancelInvoke("DelayedTackle");
+            
+            float delay = 0.25f;
+            if (!__instance.enraged && UnityEngine.Random.value > 0.75f)
+            {
+                delay += 0.5f;
+            }
+            __instance.Invoke("DelayedTackle", delay / ___realSpeedModifier);
+        }
+    }
+}
+
+// double attack cooldown rate
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Update")]
+class PatchCerbCooldown
+{
+    static void Postfix(StatueBoss __instance)
+    {
+        int n = (__instance.enraged) ? 3 : 1;
+        for(int i = 0; i < n; i++)
+        {
+            if(__instance.attackCheckCooldown > 0f)
+            {
+                __instance.attackCheckCooldown = Mathf.MoveTowards(__instance.attackCheckCooldown, 0f, Time.deltaTime);
+            }
+        }
+
+    }
+}
+
+// increase cerb animation speed
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("SetSpeed")]
+class PatchCerbAnim
+{
+    static void Postfix(StatueBoss __instance, Animator ___anim)
+    {
+        if(__instance.enraged)
+        {
+            ___anim.speed *= 1.5f;
+        }
+        else
+        {
+            ___anim.speed *= 1.2f;
+        }
+    }
+}
