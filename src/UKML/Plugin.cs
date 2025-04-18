@@ -18,7 +18,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.4.0";
+    public const string PLUGIN_VERSION = "0.4.1";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -495,7 +495,7 @@ class PatchDash
             }
             else
             {
-                angle = (___extraTackles == 0) ? 45f : 135f;
+                angle = (___extraTackles == 2) ? 45f : 135f;
             }
         }
         else

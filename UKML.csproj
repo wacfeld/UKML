@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>UKML</AssemblyName>
     <Description>My take on the currently unreleased ULTRAKILL Must Die difficulty</Description>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <RestoreAdditionalProjectSources>

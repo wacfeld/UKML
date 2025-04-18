@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2025-04-17
+
+- Fix enraged Cerberus dash shockwave orientations
+
 ## 0.4.0 - 2025-04-17
 
 - Cerberi enrage when another Cerberus reaches half health
