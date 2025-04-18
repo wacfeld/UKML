@@ -572,5 +572,9 @@ class PatchCerbAnim
         {
             ___anim.speed *= 1.5f;
         }
+        else
+        {
+            ___anim.speed *= 1.2f;
+        }
     }
 }
