@@ -59,10 +59,10 @@ public class Plugin : BaseUnityPlugin
 [HarmonyPatch("GetHurt")]
 class PatchGetHurt
 {
-    // set hardDamageMultiplier to 100%
+    // set hardDamageMultiplier to 50%
     static void Prefix(ref float hardDamageMultiplier)
     {
-        hardDamageMultiplier = 1f;
+        hardDamageMultiplier = 0.5f;
     }
 }
 
