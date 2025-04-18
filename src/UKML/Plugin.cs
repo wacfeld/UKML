@@ -18,7 +18,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.4.1";
+    public const string PLUGIN_VERSION = "0.4.2";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -59,10 +59,10 @@ public class Plugin : BaseUnityPlugin
 [HarmonyPatch("GetHurt")]
 class PatchGetHurt
 {
-    // set hardDamageMultiplier to 100%
+    // set hardDamageMultiplier to 50%
     static void Prefix(ref float hardDamageMultiplier)
     {
-        hardDamageMultiplier = 1f;
+        hardDamageMultiplier = 0.5f;
     }
 }
 

@@ -2,7 +2,7 @@
     "name": "ULTRAKILL_MUSTNT_LIVE",
     "description": "My take on the currently unreleased ULTRAKILL Must Die difficulty",
     "author": "wacfeld",
-    "version_number": "0.4.1",
+    "version_number": "0.4.2",
     "website_url": "https://github.com/wacfeld/UKML/",
     "dependencies": [
         "BepInEx-BepInExPack-5.4.2100"
