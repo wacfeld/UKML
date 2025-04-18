@@ -533,7 +533,7 @@ class PatchStopDash
             {
                 delay = 0.2f;
             }
-            else if (UnityEngine.Random.value > 0.5f)
+            else if (UnityEngine.Random.value > 0.75f)
             {
                 delay += 0.5f;
             }
