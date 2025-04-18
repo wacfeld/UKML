@@ -549,10 +549,6 @@ class PatchCerbAnim
     {
         if(__instance.enraged)
         {
-            ___anim.speed *= 2;
-        }
-        else
-        {
             ___anim.speed *= 1.5f;
         }
     }
