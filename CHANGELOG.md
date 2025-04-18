@@ -1,3 +1,5 @@
+# Changelog
+
 ## 0.4.0 - 2025-04-17
 
 - Cerberi enrage when another Cerberus reaches half health
