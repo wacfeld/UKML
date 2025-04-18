@@ -434,7 +434,7 @@ class PatchCerbEnrage
             Statue st = (Statue) field.GetValue(c);
             if(st != null)
             {
-                if(st.health <= st.originalHealth/2)
+                if(st.health < st.originalHealth/2)
                 {
                     __instance.EnrageDelayed();
                     return;
