@@ -516,8 +516,13 @@ class PatchStopDash
         if (__instance.IsInvoking("DelayedTackle"))
         {
             __instance.CancelInvoke("DelayedTackle");
+            
             float delay = 0.25f;
-            if(UnityEngine.Random.value > 0.5f)
+            if(__instance.enraged)
+            {
+                delay = 0.2f;
+            }
+            else if (UnityEngine.Random.value > 0.5f)
             {
                 delay += 0.5f;
             }
