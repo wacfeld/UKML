@@ -3,9 +3,8 @@
 - Cerberi enrage when another Cerberus reaches half health
 - Cerberus stomps gain an additional vertical shockwave
 - Cerberus dashes gain an alternating diagonal shockwave
-- Enraged Cerberus gets an additional dash
-  - Enraged Cerberus' third dash creates a horizontal shockwave
+- Enraged Cerberus gets an additional dash which creates a horizontal shockwave
 - Cerberus inter-dash cooldown is either 0.25s (75% chance) or 0.75s (25% chance)
-  - Enraged Cerberus cooldown is always 0.25s
+  - Enraged cooldown is always 0.25s
 - Increased Cerberus attack cooldown rate (2x for unenraged, 4x for enraged)
 - Increased Cerberus animation speed (1.2x for unenraged, 1.5x for enraged)

@@ -37,6 +37,14 @@ All changes are relative to Brutal difficulty
 
 - Orb projectiles now bounce several times, creating a shockwave and explosion with each bounce
 - Orb projectiles are no longer affected by enemy-caused explosions
+- Cerberi enrage when another Cerberus reaches half health
+- Stomps gain an additional vertical shockwave
+- Dashes gain an alternating diagonal shockwave
+- Enraged Cerberus gets an additional dash which creates a horizontal shockwave
+- Inter-dash cooldown is either 0.25s (75% chance) or 0.75s (25% chance)
+  - Enraged cooldown is always 0.25s
+- Increased attack cooldown rate (2x for unenraged, 4x for enraged)
+- Increased animation speed (1.2x for unenraged, 1.5x for enraged)
 </details>
 
 ## Manual Installation
