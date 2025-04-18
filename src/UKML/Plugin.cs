@@ -9,6 +9,7 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -571,6 +572,28 @@ class PatchCerbAnim
         else
         {
             ___anim.speed *= 1.2f;
+        }
+    }
+}
+
+// guttertanks enrage if punch whiffs, regardless of tripping or not
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchStop")]
+class PatchGTEnrage
+{
+    public static HashSet<int> enraged = new HashSet<int>();
+    static void Postfix(Guttertank __instance, ref bool ___punchHit)
+    {
+        if(___punchHit)
+        {
+            int id = __instance.GetInstanceID();
+            // if already enraged, no need to do anything
+            if (enraged.Contains(id))
+            {
+                return;
+            }
+
+
         }
     }
 }
