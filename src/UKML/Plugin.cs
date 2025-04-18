@@ -444,36 +444,28 @@ class PatchCerbEnrage
     }
 }
 
-//[HarmonyPatch(typeof(StatueBoss))]
-//[HarmonyPatch("StompHit")]
-//class PatchCerbStomp
-//{
-//    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid)
-//    {
-//        float[] angles = { 45f, 135f };
-//        for(int i = 0; i < 2; i++)
-//        {
-//            ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
-//            PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
-//            component.transform.rotation = __instance.transform.rotation;
-//            component.transform.Rotate(Vector3.forward * angles[i], Space.Self);
-//            component.damage = 25;
-//            component.speed = 75f;
-//            if(i != 0)
-//            {
-//                //component.speed /= 1 + i * 2;
-//                if(component.TryGetComponent<AudioSource>(out var component2))
-//                {
-//                    component2.enabled = false;
-//                }
-//            }
-//            component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
-//            component.maxSize = 100f;
-//            component.enemy = true;
-//            component.enemyType = EnemyType.Cerberus;
-//        }
-//    }
-//}
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("StompHit")]
+class PatchCerbStomp
+{
+    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid)
+    {
+        ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
+        PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
+        component.transform.rotation = __instance.transform.rotation;
+        component.transform.Rotate(Vector3.forward * 90, Space.Self);
+        component.damage = 25;
+        component.speed = 75f;
+        if (component.TryGetComponent<AudioSource>(out var component2))
+        {
+            component2.enabled = false;
+        }
+        component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
+        component.maxSize = 100f;
+        component.enemy = true;
+        component.enemyType = EnemyType.Cerberus;
+    }
+}
 
 [HarmonyPatch(typeof(StatueBoss))]
 [HarmonyPatch("Tackle")]
