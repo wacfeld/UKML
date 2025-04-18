@@ -7,6 +7,7 @@ Work in progress.
 
 All changes are applied universally.
 Therefore to play the new difficulty, simply select Brutal difficulty with the mod installed.
+Of course, you can play the mod on lower difficulties as well, if you want to experience the behavioural changes without the ludicrous speed.
 
 ## Current features
 
