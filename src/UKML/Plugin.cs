@@ -488,29 +488,35 @@ class PatchCerbEnrage
 [HarmonyPatch("Dash")]
 class PatchDash
 {
-    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid)
+    static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid, ref int ___extraTackles)
     {
-        float[] angles = { 45f, 135f };
-        for (int i = 0; i < 2; i++)
+        float angle = (___extraTackles > 0) ? 45f : 135f;
+
+        ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
+        PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
+        component.transform.rotation = __instance.transform.rotation;
+        component.transform.Rotate(Vector3.forward * angle, Space.Self);
+        component.damage = 25;
+        component.speed = 75f;
+
+        component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
+        component.maxSize = 100f;
+        component.enemy = true;
+        component.enemyType = EnemyType.Cerberus;
+    }
+}
+
+// halve inter-dash cooldown
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("StopDash")]
+class PatchStopDash
+{
+    static void Postfix(StatueBoss __instance, ref float ___realSpeedModifier)
+    {
+        if (__instance.IsInvoking("DelayedTackle"))
         {
-            ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
-            PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
-            component.transform.rotation = __instance.transform.rotation;
-            component.transform.Rotate(Vector3.forward * angles[i], Space.Self);
-            component.damage = 25;
-            component.speed = 75f;
-            if (i != 0)
-            {
-                //component.speed /= 1 + i * 2;
-                if (component.TryGetComponent<AudioSource>(out var component2))
-                {
-                    component2.enabled = false;
-                }
-            }
-            component.damage = Mathf.RoundToInt((float)component.damage * ___eid.totalDamageModifier);
-            component.maxSize = 100f;
-            component.enemy = true;
-            component.enemyType = EnemyType.Cerberus;
+            __instance.CancelInvoke("DelayedTackle");
+            __instance.Invoke("DelayedTackle", 0.25f / ___realSpeedModifier);
         }
     }
 }
