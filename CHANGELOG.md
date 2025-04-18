@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 - 2025-04-17
+
+- Lower hard damage multiplier to 50%
+
 ## 0.4.1 - 2025-04-17
 
 - Fix enraged Cerberus dash shockwave orientations
