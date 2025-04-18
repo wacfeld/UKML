@@ -475,22 +475,41 @@ class PatchCerbEnrage
 //    }
 //}
 
-//[HarmonyPatch(typeof(StatueBoss))]
-//[HarmonyPatch("Tackle")]
-//class PatchTackle
-//{
-//    static void Prefix()
-//    {
-//        Console.WriteLine("tackling!");
-//    }
-//}
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Tackle")]
+class PatchTackle
+{
+    static void Postfix(StatueBoss __instance, ref int ___extraTackles)
+    {
+        if(__instance.enraged)
+        {
+            ___extraTackles++;
+        }
+    }
+}
+
 [HarmonyPatch(typeof(StatueBoss))]
 [HarmonyPatch("Dash")]
 class PatchDash
 {
     static void Postfix(GameObject ___currentStompWave, AssetReference ___stompWave, StatueBoss __instance, EnemyIdentifier ___eid, ref int ___extraTackles)
     {
-        float angle = (___extraTackles > 0) ? 45f : 135f;
+        float angle = 45f;
+        if(__instance.enraged)
+        {
+            if(___extraTackles == 0)
+            {
+                angle = 0f;
+            }
+            else
+            {
+                angle = (___extraTackles == 0) ? 45f : 135f;
+            }
+        }
+        else
+        {
+            angle = (___extraTackles == 1) ? 45f : 135f;
+        }
 
         ___currentStompWave = UnityEngine.Object.Instantiate(___stompWave.ToAsset(), __instance.transform.position, Quaternion.identity);
         PhysicalShockwave component = ___currentStompWave.GetComponent<PhysicalShockwave>();
