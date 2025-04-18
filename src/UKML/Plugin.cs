@@ -520,3 +520,40 @@ class PatchStopDash
         }
     }
 }
+
+// double attack cooldown rate
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("Update")]
+class PatchCerbCooldown
+{
+    static void Postfix(StatueBoss __instance)
+    {
+        int n = (__instance.enraged) ? 3 : 1;
+        for(int i = 0; i < n; i++)
+        {
+            if(__instance.attackCheckCooldown > 0f)
+            {
+                __instance.attackCheckCooldown = Mathf.MoveTowards(__instance.attackCheckCooldown, 0f, Time.deltaTime);
+            }
+        }
+
+    }
+}
+
+// increase cerb animation speed
+[HarmonyPatch(typeof(StatueBoss))]
+[HarmonyPatch("SetSpeed")]
+class PatchCerbAnim
+{
+    static void Postfix(StatueBoss __instance, Animator ___anim)
+    {
+        if(__instance.enraged)
+        {
+            ___anim.speed *= 2;
+        }
+        else
+        {
+            ___anim.speed *= 1.5f;
+        }
+    }
+}
