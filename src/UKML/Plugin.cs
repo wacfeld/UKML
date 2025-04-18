@@ -495,7 +495,7 @@ class PatchDash
             }
             else
             {
-                angle = (___extraTackles == 0) ? 45f : 135f;
+                angle = (___extraTackles == 2) ? 45f : 135f;
             }
         }
         else
