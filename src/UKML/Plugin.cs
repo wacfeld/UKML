@@ -676,15 +676,23 @@ class PatchGTFire
     }
 }
 
-//[HarmonyPatch(typeof(Grenade))]
-//[HarmonyPatch("Explode")]
-//class PatchRocketExplode
-//{
-//    static bool Prefix()
-//    {
-//        return false;
-//    }
-//}
+// override Grenade.Explode() in order to modify rocket behaviour for guttertanks
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("Explode")]
+class PatchRocketExplode
+{
+    static void Postfix(Grenade __instance)
+    {
+        // destroy rocket enragement effect if present
+        int id = __instance.GetInstanceID();
+        if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            Console.WriteLine("deleting rocket enragement");
+            UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
+            PatchGTFire.enragedRocketEffects.Remove(id);
+        }
+    }
+}
 
 [HarmonyPatch]
 class PatchLandmine
