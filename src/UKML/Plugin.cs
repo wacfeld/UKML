@@ -634,8 +634,6 @@ class PatchGTFire
     public static HashSet<int> bigProxExplosion = new HashSet<int>();
     static bool Prefix(Guttertank __instance, Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid, ref int ___difficulty, ref float ___shootCooldown)
     {
-        int id = __instance.GetInstanceID();
-
         UnityEngine.Object.Instantiate(__instance.rocketParticle, __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
         Grenade grenade = UnityEngine.Object.Instantiate(__instance.rocket, MonoSingleton<WeaponCharges>.Instance.rocketFrozen ? (__instance.shootPoint.position + __instance.shootPoint.forward * 2.5f) : __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
         grenade.proximityTarget = ___eid.target;
@@ -655,7 +653,8 @@ class PatchGTFire
         }
         ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
 
-        if(PatchGTEnrage.enraged.Contains(id))
+        int id = __instance.GetInstanceID();
+        if (PatchGTEnrage.enraged.Contains(id))
         {
             //TODO
         }
@@ -663,4 +662,50 @@ class PatchGTFire
         // skip original
         return false;
     }
+}
+
+[HarmonyPatch]
+class PatchLandmine
+{
+    // Explode() is overloaded so we have to identify it like this
+    static MethodBase TargetMethod()
+    {
+        return AccessTools.Method(
+            typeof(Landmine),
+            "Explode",
+            new Type[] { typeof(bool) }
+        );
+    }
+
+    public static HashSet<int> parriedByPlayer = new HashSet<int>();
+
+    // override the original explode function so we can set the enemy flag properly
+    static bool Prefix(bool super, Landmine __instance, ref bool ___exploded, GameObject ___superExplosion, GameObject ___explosion)
+    {
+        if(!___exploded)
+        {
+            // create explosion
+            ___exploded = true;
+            Explosion[] components = UnityEngine.Object.Instantiate(super ? ___superExplosion : ___explosion, __instance.transform.position, Quaternion.identity).GetComponentsInChildren<Explosion>();
+
+            // if not parried by player, set enemy to true
+            int id = __instance.GetInstanceID();
+            bool enemy = !parriedByPlayer.Contains(id);
+            foreach(Explosion explosion in components)
+            {
+                Console.WriteLine("setting enemy to " + enemy);
+                explosion.enemy = enemy;
+            }
+
+            UnityEngine.Object.Destroy(__instance.gameObject);
+        }
+        return false;
+    }
+}
+
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("Parry")]
+class PatchLandmineParry
+{
+
 }
