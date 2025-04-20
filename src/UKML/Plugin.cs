@@ -9,7 +9,6 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -601,17 +600,14 @@ class PatchGTEnrage
             Console.WriteLine("enraging!");
             GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, ___mach.chest.transform);
             effects.Add(id, enrageEffect);
-
-            // scale and transform
-            //enrageEffect.transform.localScale = Vector3.one * 3f;
-            //enrageEffect.transform.localPosition = new Vector3(0f, 3.5f, 0f);
         }
     }
 }
 
+// remove the enragement effect from guttertanks upon death
 [HarmonyPatch(typeof(Guttertank))]
 [HarmonyPatch("Death")]
-class PatchGTDeath
+class PatchGTUnenrage
 {
     static void Postfix(Guttertank __instance)
     {
@@ -627,5 +623,44 @@ class PatchGTDeath
         {
             PatchGTEnrage.enraged.Remove(id);
         }
+    }
+}
+
+// if the GT is enraged then we overwrite the original function and mark the fired rocket for large explosion
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("FireRocket")]
+class PatchGTFire
+{
+    public static HashSet<int> bigProxExplosion = new HashSet<int>();
+    static bool Prefix(Guttertank __instance, Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid, ref int ___difficulty, ref float ___shootCooldown)
+    {
+        int id = __instance.GetInstanceID();
+
+        UnityEngine.Object.Instantiate(__instance.rocketParticle, __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+        Grenade grenade = UnityEngine.Object.Instantiate(__instance.rocket, MonoSingleton<WeaponCharges>.Instance.rocketFrozen ? (__instance.shootPoint.position + __instance.shootPoint.forward * 2.5f) : __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+        grenade.proximityTarget = ___eid.target;
+        grenade.ignoreEnemyType.Add(___eid.enemyType);
+        grenade.originEnemy = ___eid;
+        if (___eid.totalDamageModifier != 1f)
+        {
+            grenade.totalDamageMultiplier = ___eid.totalDamageModifier;
+        }
+        if (___difficulty == 1)
+        {
+            grenade.rocketSpeed *= 0.8f;
+        }
+        else if (___difficulty == 0)
+        {
+            grenade.rocketSpeed *= 0.6f;
+        }
+        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+
+        if(PatchGTEnrage.enraged.Contains(id))
+        {
+            //TODO
+        }
+
+        // skip original
+        return false;
     }
 }
