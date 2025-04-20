@@ -693,7 +693,6 @@ class PatchLandmine
             bool enemy = !parriedByPlayer.Contains(id);
             foreach(Explosion explosion in components)
             {
-                Console.WriteLine("setting enemy to " + enemy);
                 explosion.enemy = enemy;
             }
 
@@ -707,5 +706,12 @@ class PatchLandmine
 [HarmonyPatch("Parry")]
 class PatchLandmineParry
 {
-
+    static void Postfix(Landmine __instance)
+    {
+        int id = __instance.GetInstanceID();
+        if(!PatchLandmine.parriedByPlayer.Contains(id))
+        {
+            PatchLandmine.parriedByPlayer.Add(id);
+        }
+    }
 }
