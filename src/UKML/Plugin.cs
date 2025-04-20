@@ -631,7 +631,8 @@ class PatchGTUnenrage
 [HarmonyPatch("FireRocket")]
 class PatchGTFire
 {
-    public static HashSet<int> bigProxExplosion = new HashSet<int>();
+    public static Dictionary<int, GameObject> enragedRocketEffects = new Dictionary<int, GameObject>();
+
     static bool Prefix(Guttertank __instance, Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid, ref int ___difficulty, ref float ___shootCooldown)
     {
         UnityEngine.Object.Instantiate(__instance.rocketParticle, __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
@@ -656,13 +657,34 @@ class PatchGTFire
         int id = __instance.GetInstanceID();
         if (PatchGTEnrage.enraged.Contains(id))
         {
-            //TODO
+            // add enragement effect to rocket
+            Console.WriteLine("enraging rocket");
+            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, grenade.rb.transform);
+            AudioSource aud = enrageEffect.GetComponent<AudioSource>();
+            aud.pitch = 3f;
+
+            // add to dictionary
+            int rocketId = grenade.GetInstanceID();
+            if(!enragedRocketEffects.ContainsKey(rocketId))
+            {
+                enragedRocketEffects.Add(rocketId, enrageEffect);
+            }
         }
 
         // skip original
         return false;
     }
 }
+
+//[HarmonyPatch(typeof(Grenade))]
+//[HarmonyPatch("Explode")]
+//class PatchRocketExplode
+//{
+//    static bool Prefix()
+//    {
+//        return false;
+//    }
+//}
 
 [HarmonyPatch]
 class PatchLandmine
