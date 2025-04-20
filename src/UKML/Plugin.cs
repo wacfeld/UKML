@@ -9,6 +9,7 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Reflection;
+using UnityEngine.AI;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -820,5 +821,96 @@ class PatchLandmineParry
 
         // override disabling of parry zone after parry
         ___parryZone.SetActive(value: true);
+    }
+}
+
+// override Guttertank.Update()
+// when freezeframe active, replace fire rocket with mine punch
+// TODO when enraged, add SRS cannonball attack
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("Update")]
+class PatchGTUpdate
+{
+    static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
+        ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
+        ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma)
+    {
+        if(___dead || ___eid.target == null)
+        {
+            return false;
+        }
+        if(___inAction)
+        {
+            Vector3 headPosition = ___eid.target.headPosition;
+            if (___overrideTarget)
+            {
+                headPosition = ___overrideTargetPosition;
+            }
+            if(___trackInAction || ___moveForward)
+            {
+                __instance.transform.rotation = Quaternion.RotateTowards(__instance.transform.rotation, Quaternion.LookRotation(new Vector3(headPosition.x, __instance.transform.position.y, headPosition.z) - __instance.transform.position), (float)(___trackInAction ? 360 : 90) * Time.deltaTime);
+            }
+        }
+        else
+        {
+            RaycastHit hitInfo;
+            bool flag = !Physics.Raycast(__instance.transform.position + Vector3.up, ___eid.target.headPosition - (__instance.transform.position + Vector3.up), out hitInfo, Vector3.Distance(___eid.target.position, __instance.transform.position + Vector3.up), LayerMaskDefaults.Get(LMD.Environment));
+            ___lineOfSightTimer = Mathf.MoveTowards(___lineOfSightTimer, flag ? 1 : 0, Time.deltaTime * ___eid.totalSpeedModifier);
+            if (___shootCooldown > 0f)
+            {
+                ___shootCooldown = Mathf.MoveTowards(___shootCooldown, 0f, Time.deltaTime * ___eid.totalSpeedModifier);
+            }
+            if (___mineCooldown > 0f)
+            {
+                ___mineCooldown = Mathf.MoveTowards(___mineCooldown, 0f, Time.deltaTime * ((___lineOfSightTimer >= 0.5f) ? 0.5f : 1f) * ___eid.totalSpeedModifier);
+            }
+            if (___lineOfSightTimer >= 0.5f)
+            {
+                if (___difficulty <= 1 && Vector3.Distance(__instance.transform.position, ___eid.target.position) > 10f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) > 10f)
+                {
+                    ___punchCooldown = ((___difficulty == 1) ? 1 : 2);
+                }
+                if (___punchCooldown <= 0f && (Vector3.Distance(__instance.transform.position, ___eid.target.position) < 10f || Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) < 10f))
+                {
+                    var method = typeof(Guttertank).GetMethod("Punch");
+                    method.Invoke(__instance, null);
+                    //Punch();
+                }
+                else if (___shootCooldown <= 0f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(1f)) > 15f)
+                {
+                    // if freezefrome active, punch a mine
+                    if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
+                    {
+                        // TODO
+                    }
+                    // otherwise fire like normal
+                    else
+                    {
+                        var method = typeof(Guttertank).GetMethod("PrepRocket");
+                        method.Invoke(__instance, null);
+                        //PrepRocket();
+                    }
+                }
+            }
+            if (!___inAction && ___mineCooldown <= 0f)
+            {
+                var method = typeof(Guttertank).GetMethod("CheckMines");
+                //if (CheckMines())
+                if ((bool) method.Invoke(__instance, null))
+                {
+                    var method2 = typeof(Guttertank).GetMethod("PrepMine");
+                    method2.Invoke(__instance, null);
+                    //PrepMine();
+                }
+                else
+                {
+                    ___mineCooldown = 0.5f;
+                }
+            }
+        }
+        ___punchCooldown = Mathf.MoveTowards(___punchCooldown, 0f, Time.deltaTime * ___eid.totalSpeedModifier);
+        ___anim.SetBool("Walking", ___nma.velocity.magnitude > 2.5f);
+        // skip original
+        return false;
     }
 }
