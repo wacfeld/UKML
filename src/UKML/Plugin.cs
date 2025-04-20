@@ -701,7 +701,7 @@ class PatchRocketProxExplode
 {
     static bool Prefix(Grenade __instance, ref bool ___exploded)
     {
-        float sizemult = 10f;
+        float sizemult = 5f;
 
         if (___exploded)
         {
@@ -728,7 +728,7 @@ class PatchRocketProxExplode
                 explosion.toIgnore = __instance.ignoreEnemyType;
             }
             explosion.maxSize *= 1.5f * sizemult;
-            explosion.speed *= 1.5f;
+            explosion.speed *= 3f;
             if (__instance.totalDamageMultiplier != 1f)
             {
                 explosion.damage = (int)((float)explosion.damage * __instance.totalDamageMultiplier);
@@ -741,8 +741,12 @@ class PatchRocketProxExplode
             {
                 explosion.rocketExplosion = true;
             }
+            else // get rid of 0 damage leading explosion
+            {
+                UnityEngine.Object.Destroy(explosion);
+            }
         }
-        gameObject.transform.localScale *= sizemult;
+        //gameObject.transform.localScale *= sizemult;
         UnityEngine.Object.Destroy(__instance.gameObject);
 
         // destroy rocket enragement effect if present
