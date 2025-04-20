@@ -687,10 +687,74 @@ class PatchRocketExplode
         int id = __instance.GetInstanceID();
         if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
         {
-            Console.WriteLine("deleting rocket enragement");
             UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
             PatchGTFire.enragedRocketEffects.Remove(id);
         }
+    }
+}
+
+// ProximityExplosion() just calls Explode()
+// we override it to implement enraged Guttertank rockets
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("ProximityExplosion")]
+class PatchRocketProxExplode
+{
+    static bool Prefix(Grenade __instance, ref bool ___exploded)
+    {
+        float sizemult = 10f;
+
+        if (___exploded)
+        {
+            return false;
+        }
+        ___exploded = true;
+        int checkSize = Mathf.RoundToInt(3 * sizemult);
+
+        MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position, checkSize);
+
+        GameObject gameObject = UnityEngine.Object.Instantiate(__instance.explosion, __instance.transform.position, Quaternion.identity);
+        Explosion[] components = gameObject.GetComponentsInChildren<Explosion>();
+        foreach (Explosion explosion in components)
+        {
+            explosion.sourceWeapon = __instance.sourceWeapon;
+            explosion.hitterWeapon = __instance.hitterWeapon;
+            explosion.isFup = false;
+            if (__instance.enemy)
+            {
+                explosion.enemy = true;
+            }
+            if (__instance.ignoreEnemyType.Count > 0)
+            {
+                explosion.toIgnore = __instance.ignoreEnemyType;
+            }
+            explosion.maxSize *= 1.5f * sizemult;
+            explosion.speed *= 1.5f;
+            if (__instance.totalDamageMultiplier != 1f)
+            {
+                explosion.damage = (int)((float)explosion.damage * __instance.totalDamageMultiplier);
+            }
+            if ((bool)__instance.originEnemy)
+            {
+                explosion.originEnemy = __instance.originEnemy;
+            }
+            if(explosion.damage != 0)
+            {
+                explosion.rocketExplosion = true;
+            }
+        }
+        gameObject.transform.localScale *= sizemult;
+        UnityEngine.Object.Destroy(__instance.gameObject);
+
+        // destroy rocket enragement effect if present
+        int id = __instance.GetInstanceID();
+        if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
+            PatchGTFire.enragedRocketEffects.Remove(id);
+        }
+
+        // skip original
+        return false;
     }
 }
 
