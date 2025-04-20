@@ -810,12 +810,15 @@ class PatchLandmine
 [HarmonyPatch("Parry")]
 class PatchLandmineParry
 {
-    static void Postfix(Landmine __instance)
+    static void Postfix(Landmine __instance, GameObject ___parryZone, ref Vector3 ___movementDirection)
     {
         int id = __instance.GetInstanceID();
         if(!PatchLandmine.parriedByPlayer.Contains(id))
         {
             PatchLandmine.parriedByPlayer.Add(id);
         }
+
+        // override disabling of parry zone after parry
+        ___parryZone.SetActive(value: true);
     }
 }
