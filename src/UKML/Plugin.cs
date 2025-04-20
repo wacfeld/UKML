@@ -881,7 +881,7 @@ class PatchGTUpdate
                     // if freezefrome active, punch a mine
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
-                        // TODO
+                        MinePunch(__instance);
                     }
                     // otherwise fire like normal
                     else
@@ -912,5 +912,22 @@ class PatchGTUpdate
         ___anim.SetBool("Walking", ___nma.velocity.magnitude > 2.5f);
         // skip original
         return false;
+    }
+
+    static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
+        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc)
+    {
+        Console.WriteLine("mine punch!");
+
+        // play punch animation and sound and unparryable flash
+        ___anim.Play("Punch", 0, 0f);
+        UnityEngine.Object.Instantiate(__instance.punchPrepSound, __instance.transform);
+        UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash,
+            ___sc.transform.position + __instance.transform.forward, __instance.transform.rotation).transform.localScale *= 5f;
+
+        // play parry sound
+
+        // set shot cooldown as normal
+        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f: 0f);
     }
 }
