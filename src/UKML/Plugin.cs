@@ -582,6 +582,7 @@ class PatchCerbAnim
 class PatchGTEnrage
 {
     public static HashSet<int> enraged = new HashSet<int>();
+    public static Dictionary<int, GameObject> effects = new Dictionary<int, GameObject>();
     static void Postfix(Guttertank __instance, ref bool ___punchHit)
     {
         if(___punchHit)
@@ -593,7 +594,24 @@ class PatchGTEnrage
                 return;
             }
 
+            Console.WriteLine("enraging!");
+            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, __instance.transform);
+        }
+    }
+}
 
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("Death")]
+class PatchGTDeath
+{
+    static void Postfix(Guttertank __instance)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTEnrage.effects.ContainsKey(id))
+        {
+            Console.WriteLine("destroying enrage effect");
+            UnityEngine.Object.Destroy(PatchGTEnrage.effects[id]);
+            PatchGTEnrage.effects.Remove(id);
         }
     }
 }
