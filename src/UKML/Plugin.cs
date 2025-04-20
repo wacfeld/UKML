@@ -583,9 +583,9 @@ class PatchGTEnrage
 {
     public static HashSet<int> enraged = new HashSet<int>();
     public static Dictionary<int, GameObject> effects = new Dictionary<int, GameObject>();
-    static void Postfix(Guttertank __instance, ref bool ___punchHit)
+    static void Postfix(Guttertank __instance, ref bool ___punchHit, Machine ___mach)
     {
-        if(___punchHit)
+        if(!___punchHit)
         {
             int id = __instance.GetInstanceID();
             // if already enraged, no need to do anything
@@ -594,8 +594,17 @@ class PatchGTEnrage
                 return;
             }
 
+            // add to set of enraged guttertanks
+            enraged.Add(id);
+
+            // create enrage effect and put in dictionary
             Console.WriteLine("enraging!");
-            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, __instance.transform);
+            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, ___mach.chest.transform);
+            effects.Add(id, enrageEffect);
+
+            // scale and transform
+            //enrageEffect.transform.localScale = Vector3.one * 3f;
+            //enrageEffect.transform.localPosition = new Vector3(0f, 3.5f, 0f);
         }
     }
 }
@@ -612,6 +621,11 @@ class PatchGTDeath
             Console.WriteLine("destroying enrage effect");
             UnityEngine.Object.Destroy(PatchGTEnrage.effects[id]);
             PatchGTEnrage.effects.Remove(id);
+        }
+
+        if(PatchGTEnrage.enraged.Contains(id))
+        {
+            PatchGTEnrage.enraged.Remove(id);
         }
     }
 }
