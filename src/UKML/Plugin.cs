@@ -831,6 +831,8 @@ class PatchLandmineParry
 [HarmonyPatch("Update")]
 class PatchGTUpdate
 {
+    public static Dictionary<int, bool> punchParryable = new Dictionary<int, bool>();
+
     static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
         ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
         ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma, ref bool ___lookAtTarget, ref bool ___punching,
@@ -934,9 +936,46 @@ class PatchGTUpdate
         ___punching = true;
         ___punchHit = true;
 
+        // set parryable in dictionary
+        int id = __instance.GetInstanceID();
+        if (!punchParryable.ContainsKey(id))
+        {
+            punchParryable.Add(id, true);
+        }
+
         // TODO play parry sound
 
         // set shot cooldown as normal
         ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f: 0f);
+    }
+}
+
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("Punch")]
+class PatchGTPunchParryable
+{
+    static bool Prefix(Guttertank __instance)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+        {
+            return false;
+        }
+        return true;
+    }
+}
+
+// after GT punch over reset punchParryable
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchStop")]
+class PatchGTPunchStopParryable
+{
+    static void Postfix(Guttertank __instance)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchParryable.ContainsKey(id))
+        {
+            PatchGTUpdate.punchParryable[id] = false;
+        }
     }
 }
