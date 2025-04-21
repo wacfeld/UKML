@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Reflection;
 using UnityEngine.AI;
+using System.Runtime.InteropServices;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -832,6 +833,7 @@ class PatchLandmineParry
 class PatchGTUpdate
 {
     public static Dictionary<int, bool> punchParryable = new Dictionary<int, bool>();
+    public static HashSet<int> punchedMines = new HashSet<int>();
 
     static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
         ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
@@ -951,14 +953,18 @@ class PatchGTUpdate
         ___mach.parryable = true;
 
         // create a landmine with the same position and rotation as a rocket
-        Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position,
+        Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward*2.5f,
             Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
         if (mine.TryGetComponent<Landmine>(out var component))
         {
             component.originEnemy = ___eid;
+
+            // store the mine ID for later so it knows to parry itself right after Start()
+            int mineId = component.GetInstanceID();
+            punchedMines.Add(mineId);
         }
         // parry it toward the player
-        mine.Parry();
+        
 
         // TODO play parry sound
 
@@ -966,6 +972,36 @@ class PatchGTUpdate
         ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
     }
 }
+
+// if our mine is marked as punched by a guttertank, immediately activate and parry it after startup
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("Start")]
+class PatchLandmineStart
+{
+    static void Postfix(Landmine __instance, Rigidbody ___rb, ref bool ___activated, GameObject ___parryZone,
+        ref bool ___parried, ref Vector3 ___movementDirection)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchedMines.Contains(id))
+        {
+            PatchGTUpdate.punchedMines.Remove(id);
+
+            // manually activate
+            ___rb.isKinematic = false;
+            ___rb.useGravity = true;
+            ___activated = true;
+            ___parryZone.SetActive(value: true);
+
+            // manually parry
+            ___parried = true;
+            ___movementDirection = __instance.transform.forward;
+            ___rb.useGravity = true; // redundant, oh well
+            __instance.SetColor(new Color(0f, 1f, 1f));
+            __instance.Invoke("Explode", 3f);
+        }
+    }
+}
+
 
 //// if punchParryable indicates that the current punch should be made parryable, override the Punch() function
 //[HarmonyPatch(typeof(Guttertank))]
