@@ -836,7 +836,7 @@ class PatchGTUpdate
     static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
         ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
         ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma, ref bool ___lookAtTarget, ref bool ___punching,
-        SwingCheck2 ___sc, ref bool ___punchHit)
+        SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach)
     {
         if(___dead || ___eid.target == null)
         {
@@ -884,7 +884,7 @@ class PatchGTUpdate
                     // if freezefrome active, punch a mine
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
-                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching, ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit);
+                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching, ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach);
                     }
                     // otherwise fire like normal
                     else
@@ -918,14 +918,14 @@ class PatchGTUpdate
     }
 
     static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
-        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit)
+        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach)
     {
         Console.WriteLine("mine punch!");
 
         // play punch animation and sound and unparryable flash
         ___anim.Play("Punch", 0, 0f);
         UnityEngine.Object.Instantiate(__instance.punchPrepSound, __instance.transform);
-        UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash,
+        UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash,
             ___sc.transform.position + __instance.transform.forward, __instance.transform.rotation).transform.localScale *= 5f;
 
         // set state variables
@@ -942,40 +942,53 @@ class PatchGTUpdate
         {
             punchParryable.Add(id, true);
         }
+        else
+        {
+            punchParryable[id] = true;
+        }
+        ___mach.parryable = true;
 
         // TODO play parry sound
 
         // set shot cooldown as normal
-        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f: 0f);
+        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
     }
 }
 
-[HarmonyPatch(typeof(Guttertank))]
-[HarmonyPatch("Punch")]
-class PatchGTPunchParryable
-{
-    static bool Prefix(Guttertank __instance)
-    {
-        int id = __instance.GetInstanceID();
-        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
-        {
-            return false;
-        }
-        return true;
-    }
-}
+//// if punchParryable indicates that the current punch should be made parryable, override the Punch() function
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("PunchActive")]
+//class PatchGTPunchParryable
+//{
+//    static bool Prefix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction)
+//    {
+//        Console.WriteLine("punch active!");
+//        int id = __instance.GetInstanceID();
+//        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+//        {
+//            ___sc.DamageStart();
+//            ___sc.knockBackDirectionOverride = true;
+//            ___sc.knockBackDirection = __instance.transform.forward;
+//            ___moveForward = true;
+//            ___trackInAction = false;
+//            return false;
+//        }
+//        return true;
+//    }
+//}
 
-// after GT punch over reset punchParryable
+// after GT punch over reset punchParryable, and also clear parryable flag
 [HarmonyPatch(typeof(Guttertank))]
 [HarmonyPatch("PunchStop")]
 class PatchGTPunchStopParryable
 {
-    static void Postfix(Guttertank __instance)
+    static void Postfix(Guttertank __instance, Machine ___mach)
     {
         int id = __instance.GetInstanceID();
         if (PatchGTUpdate.punchParryable.ContainsKey(id))
         {
             PatchGTUpdate.punchParryable[id] = false;
+            ___mach.parryable = false;
         }
     }
 }
