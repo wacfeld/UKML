@@ -992,3 +992,20 @@ class PatchGTPunchStopParryable
         }
     }
 }
+
+// if it was a mine punch that got parried, don't play the PunchStagger animation
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("GotParried")]
+class PatchGTParried
+{
+    static bool Prefix(Guttertank __instance, Machine ___mach)
+    {
+        int id = __instance.GetInstanceID();
+        if(PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+        {
+            ___mach.parryable = false;
+            return false;
+        }
+        return true;
+    }
+}

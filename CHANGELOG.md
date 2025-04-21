@@ -1,5 +1,10 @@
 # Changelog
 
+## unreleased
+
+- mine punch, unslippable, unenrageable, parryable
+- enraged rocket explosion only big if not shot
+
 ## 0.4.2 - 2025-04-17
 
 - Lower hard damage multiplier to 50%
