@@ -833,7 +833,8 @@ class PatchGTUpdate
 {
     static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
         ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
-        ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma)
+        ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma, ref bool ___lookAtTarget, ref bool ___punching,
+        SwingCheck2 ___sc, ref bool ___punchHit)
     {
         if(___dead || ___eid.target == null)
         {
@@ -872,7 +873,7 @@ class PatchGTUpdate
                 }
                 if (___punchCooldown <= 0f && (Vector3.Distance(__instance.transform.position, ___eid.target.position) < 10f || Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) < 10f))
                 {
-                    var method = typeof(Guttertank).GetMethod("Punch");
+                    var method = typeof(Guttertank).GetMethod("Punch", BindingFlags.NonPublic | BindingFlags.Instance);
                     method.Invoke(__instance, null);
                     //Punch();
                 }
@@ -881,12 +882,12 @@ class PatchGTUpdate
                     // if freezefrome active, punch a mine
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
-                        MinePunch(__instance);
+                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching, ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit);
                     }
                     // otherwise fire like normal
                     else
                     {
-                        var method = typeof(Guttertank).GetMethod("PrepRocket");
+                        var method = typeof(Guttertank).GetMethod("PrepRocket", BindingFlags.NonPublic | BindingFlags.Instance);
                         method.Invoke(__instance, null);
                         //PrepRocket();
                     }
@@ -894,11 +895,11 @@ class PatchGTUpdate
             }
             if (!___inAction && ___mineCooldown <= 0f)
             {
-                var method = typeof(Guttertank).GetMethod("CheckMines");
+                var method = typeof(Guttertank).GetMethod("CheckMines", BindingFlags.NonPublic | BindingFlags.Instance);
                 //if (CheckMines())
                 if ((bool) method.Invoke(__instance, null))
                 {
-                    var method2 = typeof(Guttertank).GetMethod("PrepMine");
+                    var method2 = typeof(Guttertank).GetMethod("PrepMine", BindingFlags.NonPublic | BindingFlags.Instance);
                     method2.Invoke(__instance, null);
                     //PrepMine();
                 }
@@ -915,7 +916,7 @@ class PatchGTUpdate
     }
 
     static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
-        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc)
+        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit)
     {
         Console.WriteLine("mine punch!");
 
@@ -925,7 +926,15 @@ class PatchGTUpdate
         UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.unparryableFlash,
             ___sc.transform.position + __instance.transform.forward, __instance.transform.rotation).transform.localScale *= 5f;
 
-        // play parry sound
+        // set state variables
+        ___inAction = true;
+        ___nma.enabled = false;
+        ___trackInAction = true;
+        ___lookAtTarget = true;
+        ___punching = true;
+        ___punchHit = true;
+
+        // TODO play parry sound
 
         // set shot cooldown as normal
         ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f: 0f);
