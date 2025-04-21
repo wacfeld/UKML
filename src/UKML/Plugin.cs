@@ -884,7 +884,8 @@ class PatchGTUpdate
                     // if freezefrome active, punch a mine
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
-                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching, ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach);
+                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching,
+                            ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach, ref ___overrideTargetPosition, ___eid);
                     }
                     // otherwise fire like normal
                     else
@@ -918,7 +919,8 @@ class PatchGTUpdate
     }
 
     static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
-        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach)
+        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach, ref Vector3 ___overrideTargetPosition,
+        EnemyIdentifier ___eid)
     {
         Console.WriteLine("mine punch!");
 
@@ -947,6 +949,16 @@ class PatchGTUpdate
             punchParryable[id] = true;
         }
         ___mach.parryable = true;
+
+        // create a landmine with the same position and rotation as a rocket
+        Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position,
+            Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+        if (mine.TryGetComponent<Landmine>(out var component))
+        {
+            component.originEnemy = ___eid;
+        }
+        // parry it toward the player
+        mine.Parry();
 
         // TODO play parry sound
 
