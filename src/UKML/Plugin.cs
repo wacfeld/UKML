@@ -1141,6 +1141,13 @@ class PatchMineCollide
             return false;
         }
 
+        // don't collide if parried by player (to avoid cases where parrying causes immediate detonation)
+        int id = __instance.GetInstanceID();
+        if(collision.gameObject == MonoSingleton<NewMovement>.Instance.gameObject && PatchLandmine.parriedByPlayer.Contains(id))
+        {
+            return false;
+        }
+
         EnemyIdentifier component = null;
         EnemyIdentifierIdentifier component2 = null;
         if (collision.gameObject.layer == 26 && collision.gameObject.TryGetComponent<ParryHelper>(out var component3) && (bool)component3.target)
