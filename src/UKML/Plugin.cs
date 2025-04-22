@@ -661,7 +661,8 @@ class PatchGTFire
         {
             grenade.rocketSpeed *= 0.6f;
         }
-        ___shootCooldown = UnityEngine.Random.Range(0.75f, 1.25f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        //___shootCooldown = UnityEngine.Random.Range(0.75f, 1.25f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        ___shootCooldown = 0f;
 
         int id = __instance.GetInstanceID();
         if (PatchGTEnrage.enraged.Contains(id))
@@ -890,7 +891,7 @@ class PatchGTUpdate
                 }
                 else if (___shootCooldown <= 0f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(1f)) > 15f)
                 {
-                    // if freezefrome active, punch a mine
+                    // if freezeframe active, punch a mine
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
                         MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching,
@@ -906,7 +907,8 @@ class PatchGTUpdate
                     }
                 }
             }
-            if (!___inAction && ___mineCooldown <= 0f)
+            // don't place mines if freezeframe active
+            if (!___inAction && ___mineCooldown <= 0f && !MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
             {
                 var method = typeof(Guttertank).GetMethod("CheckMines", BindingFlags.NonPublic | BindingFlags.Instance);
                 //if (CheckMines())
@@ -1003,6 +1005,27 @@ class PatchGTUpdate
         }
     }
 }
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("SlowUpdate")]
+//class PatchGTSlowUpdate
+//{
+//    static void Prefix(Guttertank __instance, NavMeshAgent ___nma, ref bool ___inAction)
+//    {
+//        if(___nma == null)
+//        {
+//            return;
+//        }
+//        if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
+//        {
+//            ___nma.enabled = false;
+//        }
+//        else if(!___inAction)
+//        {
+//            ___nma.enabled = true;
+//        }
+//    }
+//}
 
 // if our mine is marked as punched by a guttertank, immediately activate and parry it after startup
 [HarmonyPatch(typeof(Landmine))]
