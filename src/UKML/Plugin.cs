@@ -845,7 +845,7 @@ class PatchGTUpdate
     static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
         ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
         ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma, ref bool ___lookAtTarget, ref bool ___punching,
-        SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach)
+        SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach, Collider ___col)
     {
         if(___dead || ___eid.target == null)
         {
@@ -894,7 +894,8 @@ class PatchGTUpdate
                     if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
                     {
                         MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching,
-                            ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach, ref ___overrideTargetPosition, ___eid);
+                            ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach, ref ___overrideTargetPosition, ___eid,
+                            ref ___overrideTarget, ___col);
                     }
                     // otherwise fire like normal
                     else
@@ -929,7 +930,7 @@ class PatchGTUpdate
 
     static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
         ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach, ref Vector3 ___overrideTargetPosition,
-        EnemyIdentifier ___eid)
+        EnemyIdentifier ___eid, ref bool ___overrideTarget, Collider ___col)
     {
         Console.WriteLine("mine punch!");
 
@@ -963,6 +964,43 @@ class PatchGTUpdate
 
         // set shot cooldown as normal
         ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+
+        // predict player position
+        PredictTargetMine(__instance, ___eid, ref ___overrideTarget, ref ___difficulty, ref ___overrideTargetPosition, ___col);
+    }
+
+    // a copy of Guttertank.PredictTarget() but without the parryable flash, and adjusted for the speed of a parried mine
+    static void PredictTargetMine(Guttertank __instance, EnemyIdentifier ___eid, ref bool ___overrideTarget, ref int ___difficulty,
+        ref Vector3 ___overrideTargetPosition, Collider ___col)
+    {
+        if (___eid.target != null)
+        {
+            ___overrideTarget = true;
+            float num = 1f;
+            if (___difficulty == 1)
+            {
+                num = 0.75f;
+            }
+            else if (___difficulty == 0)
+            {
+                num = 0.5f;
+            }
+            ___overrideTargetPosition = ___eid.target.PredictTargetPosition((UnityEngine.Random.Range(0.75f, 1f) + Vector3.Distance(__instance.shootPoint.position, ___eid.target.headPosition) / 150f) * num);
+            if (Physics.Raycast(___eid.target.position, Vector3.down, 15f, LayerMaskDefaults.Get(LMD.Environment)))
+            {
+                ___overrideTargetPosition = new Vector3(___overrideTargetPosition.x, ___eid.target.headPosition.y, ___overrideTargetPosition.z);
+            }
+            bool flag = false;
+            if (Physics.Raycast(__instance.aimBone.position, ___overrideTargetPosition - __instance.aimBone.position, out var hitInfo, Vector3.Distance(___overrideTargetPosition, __instance.aimBone.position), LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies)) && (!hitInfo.transform.TryGetComponent<Breakable>(out var component) || !component.playerOnly))
+            {
+                flag = true;
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+            if (!flag && ___overrideTargetPosition != ___eid.target.headPosition && ___col.Raycast(new Ray(___eid.target.headPosition, (___overrideTargetPosition - ___eid.target.headPosition).normalized), out hitInfo, Vector3.Distance(___eid.target.headPosition, ___overrideTargetPosition)))
+            {
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+        }
     }
 }
 
@@ -1017,40 +1055,6 @@ class PatchGTPunchParryable
                 // store the mine ID for later so it knows to parry itself right after Start()
                 int mineId = component.GetInstanceID();
                 PatchGTUpdate.punchedMines.Add(mineId);
-            }
-        }
-    }
-
-    // a copy of Guttertank.PredictTarget() but without the parryable flash
-    static void PredictTargetParryable(Guttertank __instance, EnemyIdentifier ___eid, ref bool ___overrideTarget, ref int ___difficulty,
-        ref Vector3 ___overrideTargetPosition, Collider ___col)
-    {
-        if (___eid.target != null)
-        {
-            ___overrideTarget = true;
-            float num = 1f;
-            if (___difficulty == 1)
-            {
-                num = 0.75f;
-            }
-            else if (___difficulty == 0)
-            {
-                num = 0.5f;
-            }
-            ___overrideTargetPosition = ___eid.target.PredictTargetPosition((UnityEngine.Random.Range(0.75f, 1f) + Vector3.Distance(__instance.shootPoint.position, ___eid.target.headPosition) / 150f) * num);
-            if (Physics.Raycast(___eid.target.position, Vector3.down, 15f, LayerMaskDefaults.Get(LMD.Environment)))
-            {
-                ___overrideTargetPosition = new Vector3(___overrideTargetPosition.x, ___eid.target.headPosition.y, ___overrideTargetPosition.z);
-            }
-            bool flag = false;
-            if (Physics.Raycast(__instance.aimBone.position, ___overrideTargetPosition - __instance.aimBone.position, out var hitInfo, Vector3.Distance(___overrideTargetPosition, __instance.aimBone.position), LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies)) && (!hitInfo.transform.TryGetComponent<Breakable>(out var component) || !component.playerOnly))
-            {
-                flag = true;
-                ___overrideTargetPosition = ___eid.target.headPosition;
-            }
-            if (!flag && ___overrideTargetPosition != ___eid.target.headPosition && ___col.Raycast(new Ray(___eid.target.headPosition, (___overrideTargetPosition - ___eid.target.headPosition).normalized), out hitInfo, Vector3.Distance(___eid.target.headPosition, ___overrideTargetPosition)))
-            {
-                ___overrideTargetPosition = ___eid.target.headPosition;
             }
         }
     }
