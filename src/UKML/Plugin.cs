@@ -883,8 +883,6 @@ class PatchGTUpdate
             {
                 ___mineCooldown = Mathf.MoveTowards(___mineCooldown, 0f, Time.deltaTime * ((___lineOfSightTimer >= 0.5f) ? 0.5f : 1f) * ___eid.totalSpeedModifier);
             }
-            Console.WriteLine("line of sight timer is " + ___lineOfSightTimer);
-            Console.WriteLine("shoot cooldown is " + ___shootCooldown);
             if (___lineOfSightTimer >= 0.5f)
             {
                 if (___difficulty <= 1 && Vector3.Distance(__instance.transform.position, ___eid.target.position) > 10f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) > 10f)
