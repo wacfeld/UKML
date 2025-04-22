@@ -1039,15 +1039,26 @@ class PatchLandmineStart
 [HarmonyPatch("PunchActive")]
 class PatchGTPunchParryable
 {
-    static void Postfix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction, ref Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid)
+    static void Postfix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction, ref Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid,
+        Machine ___mach)
     {
         Console.WriteLine("punch active!");
         int id = __instance.GetInstanceID();
         if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
         {
             // create a landmine with the same position and rotation as a rocket
-            Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward * 2.5f,
-                Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+            //Vector3 minePos = __instance.shootPoint.position;
+            //Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
+            //minePos += mineDirection * 3.5f;
+            //minePos -= Vector3.up;
+            Vector3 minePos = ___mach.chest.transform.position;
+            Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
+            minePos += mineDirection * 10f;
+
+            Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, minePos,
+                Quaternion.LookRotation(___overrideTargetPosition - minePos));
+            //Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward * 2.5f,
+                //Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
             if (mine.TryGetComponent<Landmine>(out var component))
             {
                 component.originEnemy = ___eid;
