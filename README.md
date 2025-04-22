@@ -50,7 +50,7 @@ All changes are relative to Brutal difficulty
 
 # Install
 
-# Manually
+## Manually
 
 - Install [BepInEx](https://thunderstore.io/c/ultrakill/p/BepInEx/BepInExPack/) if you don't have it already
 - Go to the latest [Release](https://github.com/wacfeld/UKML/releases)
