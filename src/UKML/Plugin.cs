@@ -957,21 +957,7 @@ class PatchGTUpdate
         {
             punchParryable[id] = true;
         }
-        ___mach.parryable = true;
-
-        // create a landmine with the same position and rotation as a rocket
-        Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward*2.5f,
-            Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
-        if (mine.TryGetComponent<Landmine>(out var component))
-        {
-            component.originEnemy = ___eid;
-
-            // store the mine ID for later so it knows to parry itself right after Start()
-            int mineId = component.GetInstanceID();
-            punchedMines.Add(mineId);
-        }
-        // parry it toward the player
-        
+        ___mach.parryable = true;        
 
         // TODO play parry sound
 
@@ -1010,27 +996,65 @@ class PatchLandmineStart
 }
 
 
-//// if punchParryable indicates that the current punch should be made parryable, override the Punch() function
-//[HarmonyPatch(typeof(Guttertank))]
-//[HarmonyPatch("PunchActive")]
-//class PatchGTPunchParryable
-//{
-//    static bool Prefix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction)
-//    {
-//        Console.WriteLine("punch active!");
-//        int id = __instance.GetInstanceID();
-//        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
-//        {
-//            ___sc.DamageStart();
-//            ___sc.knockBackDirectionOverride = true;
-//            ___sc.knockBackDirection = __instance.transform.forward;
-//            ___moveForward = true;
-//            ___trackInAction = false;
-//            return false;
-//        }
-//        return true;
-//    }
-//}
+// if punchParryable[id] is set, create a landmine and hurl it at the player
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchActive")]
+class PatchGTPunchParryable
+{
+    static void Postfix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction, ref Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid)
+    {
+        Console.WriteLine("punch active!");
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+        {
+            // create a landmine with the same position and rotation as a rocket
+            Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward * 2.5f,
+                Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+            if (mine.TryGetComponent<Landmine>(out var component))
+            {
+                component.originEnemy = ___eid;
+
+                // store the mine ID for later so it knows to parry itself right after Start()
+                int mineId = component.GetInstanceID();
+                PatchGTUpdate.punchedMines.Add(mineId);
+            }
+        }
+    }
+
+    // a copy of Guttertank.PredictTarget() but without the parryable flash
+    static void PredictTargetParryable(Guttertank __instance, EnemyIdentifier ___eid, ref bool ___overrideTarget, ref int ___difficulty,
+        ref Vector3 ___overrideTargetPosition, Collider ___col)
+    {
+        if (___eid.target != null)
+        {
+            ___overrideTarget = true;
+            float num = 1f;
+            if (___difficulty == 1)
+            {
+                num = 0.75f;
+            }
+            else if (___difficulty == 0)
+            {
+                num = 0.5f;
+            }
+            ___overrideTargetPosition = ___eid.target.PredictTargetPosition((UnityEngine.Random.Range(0.75f, 1f) + Vector3.Distance(__instance.shootPoint.position, ___eid.target.headPosition) / 150f) * num);
+            if (Physics.Raycast(___eid.target.position, Vector3.down, 15f, LayerMaskDefaults.Get(LMD.Environment)))
+            {
+                ___overrideTargetPosition = new Vector3(___overrideTargetPosition.x, ___eid.target.headPosition.y, ___overrideTargetPosition.z);
+            }
+            bool flag = false;
+            if (Physics.Raycast(__instance.aimBone.position, ___overrideTargetPosition - __instance.aimBone.position, out var hitInfo, Vector3.Distance(___overrideTargetPosition, __instance.aimBone.position), LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies)) && (!hitInfo.transform.TryGetComponent<Breakable>(out var component) || !component.playerOnly))
+            {
+                flag = true;
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+            if (!flag && ___overrideTargetPosition != ___eid.target.headPosition && ___col.Raycast(new Ray(___eid.target.headPosition, (___overrideTargetPosition - ___eid.target.headPosition).normalized), out hitInfo, Vector3.Distance(___eid.target.headPosition, ___overrideTargetPosition)))
+            {
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+        }
+    }
+}
 
 // after GT punch over reset punchParryable, and also clear parryable flag
 [HarmonyPatch(typeof(Guttertank))]
