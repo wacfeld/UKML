@@ -48,8 +48,14 @@ All changes are relative to Brutal difficulty
 - Increased animation speed (1.2x for unenraged, 1.5x for enraged)
 </details>
 
-## Manual Installation
+# Install
+
+# Manually
 
 - Install [BepInEx](https://thunderstore.io/c/ultrakill/p/BepInEx/BepInExPack/) if you don't have it already
 - Go to the latest [Release](https://github.com/wacfeld/UKML/releases)
 - Download the dll and move it to `ULTRAKILL/BepInEx/plugins`
+
+## Using a mod manager
+
+- Get the latest version from [Thunderstore](https://thunderstore.io/c/ultrakill/p/wacfeld/ULTRAKILL_MUSTNT_LIVE/versions/)
