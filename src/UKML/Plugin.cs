@@ -1129,6 +1129,53 @@ class PatchGTParried
     }
 }
 
+// override the landmine collision function to allow it to collide with player
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("OnCollisionEnter")]
+class PatchMineCollide
+{
+    static bool Prefix(Landmine __instance, ref bool ___parried, ref bool ___exploded, Collision collision)
+    {
+        if (!___parried || ___exploded)
+        {
+            return false;
+        }
+
+        EnemyIdentifier component = null;
+        EnemyIdentifierIdentifier component2 = null;
+        if (collision.gameObject.layer == 26 && collision.gameObject.TryGetComponent<ParryHelper>(out var component3) && (bool)component3.target)
+        {
+            component3.target.TryGetComponent<EnemyIdentifier>(out component);
+        }
+        if ((bool)component || (collision.gameObject.TryGetComponent<EnemyIdentifierIdentifier>(out component2) && (bool)component2.eid) || collision.gameObject.TryGetComponent<EnemyIdentifier>(out component))
+        {
+            if ((bool)component2 && (bool)component2.eid)
+            {
+                component = component2.eid;
+            }
+            if (!component.dead)
+            {
+                if (component == __instance.originEnemy)
+                {
+                    MonoSingleton<StyleHUD>.Instance.AddPoints(150, "ultrakill.landyours", null, component);
+                }
+                else
+                {
+                    MonoSingleton<StyleHUD>.Instance.AddPoints(75, "ultrakill.serve", null, component);
+                }
+                if (component.enemyType == EnemyType.Gutterman && component.TryGetComponent<Gutterman>(out var component4) && component4.hasShield)
+                {
+                    component4.ShieldBreak(player: true, flash: false);
+                }
+            }
+        }
+        var method = typeof(Landmine).GetMethod("Explode", BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, new Type[] { typeof(bool)}, null);
+        method.Invoke(__instance, new object[] { true });
+        //Explode(super: true);
+        return false;
+    }
+}
+
 //[HarmonyPatch(typeof(Guttertank))]
 //[HarmonyPatch("PredictTarget")]
 //class PatchGTPredict

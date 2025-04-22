@@ -5,6 +5,7 @@
 - mine punch, unslippable, unenrageable, parryable
 - enraged rocket explosion only big if not shot/impact hammered
 - mines can be parried multiple times
+- mine friendly fire off by default
 
 ## 0.4.2 - 2025-04-17
 
