@@ -661,7 +661,7 @@ class PatchGTFire
         {
             grenade.rocketSpeed *= 0.6f;
         }
-        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        ___shootCooldown = UnityEngine.Random.Range(0.75f, 1.25f) - ((___difficulty >= 4) ? 0.5f : 0f);
 
         int id = __instance.GetInstanceID();
         if (PatchGTEnrage.enraged.Contains(id))

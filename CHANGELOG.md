@@ -4,6 +4,7 @@
 
 - mine punch, unslippable, unenrageable, parryable
 - enraged rocket explosion only big if not shot
+- mines can be parried multiple times
 
 ## 0.4.2 - 2025-04-17
 
