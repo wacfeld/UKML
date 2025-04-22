@@ -970,26 +970,29 @@ class PatchGTUpdate
         ___shootCooldown = 0.25f;
 
         // predict player position
-        PredictTargetMine(__instance, ___eid, ref ___overrideTarget, ref ___difficulty, ref ___overrideTargetPosition, ___col);
+        PredictTargetMine(__instance, ___eid, ref ___overrideTarget, ref ___difficulty, ref ___overrideTargetPosition, ___col, ___mach);
     }
 
     // a copy of Guttertank.PredictTarget() but without the parryable flash, and adjusted for the speed of a parried mine
     static void PredictTargetMine(Guttertank __instance, EnemyIdentifier ___eid, ref bool ___overrideTarget, ref int ___difficulty,
-        ref Vector3 ___overrideTargetPosition, Collider ___col)
+        ref Vector3 ___overrideTargetPosition, Collider ___col, Machine ___mach)
     {
         if (___eid.target != null)
         {
             ___overrideTarget = true;
-            float num = 1f;
-            if (___difficulty == 1)
-            {
-                num = 0.75f;
-            }
-            else if (___difficulty == 0)
-            {
-                num = 0.5f;
-            }
-            ___overrideTargetPosition = ___eid.target.PredictTargetPosition((UnityEngine.Random.Range(0.75f, 1f) + Vector3.Distance(__instance.shootPoint.position, ___eid.target.headPosition) / 150f) * num);
+            //float num = 1f;
+            //if (___difficulty == 1)
+            //{
+            //    num = 0.75f;
+            //}
+            //else if (___difficulty == 0)
+            //{
+            //    num = 0.5f;
+            //}
+            float speed = 1000f;
+            Vector3 minePos = PatchGTPunchParryable.GetMinePos(___mach, ref ___overrideTargetPosition);
+
+            ___overrideTargetPosition = ___eid.target.PredictTargetPosition(0.5f + (Vector3.Distance(minePos, ___eid.target.headPosition) / speed));
             if (Physics.Raycast(___eid.target.position, Vector3.down, 15f, LayerMaskDefaults.Get(LMD.Environment)))
             {
                 ___overrideTargetPosition = new Vector3(___overrideTargetPosition.x, ___eid.target.headPosition.y, ___overrideTargetPosition.z);
@@ -1064,6 +1067,14 @@ class PatchLandmineStart
 [HarmonyPatch("PunchActive")]
 class PatchGTPunchParryable
 {
+    public static Vector3 GetMinePos(Machine ___mach, ref Vector3 ___overrideTargetPosition)
+    {
+        Vector3 minePos = ___mach.chest.transform.position;
+        Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
+        minePos += mineDirection * 10f;
+        return minePos;
+    }
+
     static void Postfix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction, ref Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid,
         Machine ___mach)
     {
@@ -1076,9 +1087,7 @@ class PatchGTPunchParryable
             //Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
             //minePos += mineDirection * 3.5f;
             //minePos -= Vector3.up;
-            Vector3 minePos = ___mach.chest.transform.position;
-            Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
-            minePos += mineDirection * 10f;
+            Vector3 minePos = GetMinePos(___mach, ref ___overrideTargetPosition);
 
             Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, minePos,
                 Quaternion.LookRotation(___overrideTargetPosition - minePos));
