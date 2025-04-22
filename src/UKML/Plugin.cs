@@ -989,7 +989,7 @@ class PatchGTUpdate
             //{
             //    num = 0.5f;
             //}
-            float speed = 1000f;
+            float speed = 250f;
             Vector3 minePos = PatchGTPunchParryable.GetMinePos(___mach, ref ___overrideTargetPosition);
 
             ___overrideTargetPosition = ___eid.target.PredictTargetPosition(0.5f + (Vector3.Distance(minePos, ___eid.target.headPosition) / speed));
