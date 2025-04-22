@@ -635,8 +635,15 @@ class PatchGTFire
 {
     public static Dictionary<int, GameObject> enragedRocketEffects = new Dictionary<int, GameObject>();
 
+    //static void Postfix()
+    //{
+    //    Console.WriteLine("FireRocket postfix");
+    //}
+
     static bool Prefix(Guttertank __instance, Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid, ref int ___difficulty, ref float ___shootCooldown)
     {
+        //Console.WriteLine("FireRocket prefix");
+
         UnityEngine.Object.Instantiate(__instance.rocketParticle, __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
         Grenade grenade = UnityEngine.Object.Instantiate(__instance.rocket, MonoSingleton<WeaponCharges>.Instance.rocketFrozen ? (__instance.shootPoint.position + __instance.shootPoint.forward * 2.5f) : __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
         grenade.proximityTarget = ___eid.target;
@@ -1057,3 +1064,27 @@ class PatchGTParried
         return true;
     }
 }
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("PredictTarget")]
+//class PatchGTPredict
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("predicting target!");
+//    }
+//}
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("PrepRocket")]
+//class PatchGTPrepRocket
+//{
+//    static void Prefix()
+//    {
+//        Console.WriteLine("PrepRocket prefix");
+//    }
+//    static void Postfix()
+//    {
+//        Console.WriteLine("PrepRocket postfix");
+//    }
+//}
