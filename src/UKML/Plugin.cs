@@ -661,8 +661,7 @@ class PatchGTFire
         {
             grenade.rocketSpeed *= 0.6f;
         }
-        //___shootCooldown = UnityEngine.Random.Range(0.75f, 1.25f) - ((___difficulty >= 4) ? 0.5f : 0f);
-        ___shootCooldown = 0f;
+        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
 
         int id = __instance.GetInstanceID();
         if (PatchGTEnrage.enraged.Contains(id))
@@ -877,6 +876,8 @@ class PatchGTUpdate
             {
                 ___mineCooldown = Mathf.MoveTowards(___mineCooldown, 0f, Time.deltaTime * ((___lineOfSightTimer >= 0.5f) ? 0.5f : 1f) * ___eid.totalSpeedModifier);
             }
+            Console.WriteLine("line of sight timer is " + ___lineOfSightTimer);
+            Console.WriteLine("shoot cooldown is " + ___shootCooldown);
             if (___lineOfSightTimer >= 0.5f)
             {
                 if (___difficulty <= 1 && Vector3.Distance(__instance.transform.position, ___eid.target.position) > 10f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) > 10f)
@@ -960,12 +961,13 @@ class PatchGTUpdate
         {
             punchParryable[id] = true;
         }
-        ___mach.parryable = true;        
+        ___mach.parryable = true;
 
         // TODO play parry sound
 
         // set shot cooldown as normal
-        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        //___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        ___shootCooldown = 0.25f;
 
         // predict player position
         PredictTargetMine(__instance, ___eid, ref ___overrideTarget, ref ___difficulty, ref ___overrideTargetPosition, ___col);
