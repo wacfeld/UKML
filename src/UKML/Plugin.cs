@@ -711,18 +711,27 @@ class PatchRocketProxExplode
     static bool Prefix(Grenade __instance, ref bool ___exploded)
     {
         int id = __instance.GetInstanceID();
-        // if it's not an enraged rocket allow the ordinary protocol to take over
+        
+        // if it's not an enraged rocket then run the original
         if(!PatchGTFire.enragedRocketEffects.ContainsKey(id))
         {
             return true;
         }
-
-        float sizemult = 5f;
-
         if (___exploded)
         {
             return false;
         }
+
+        EnragedExplosion(__instance, ref ___exploded);
+
+        // skip original
+        return false;
+    }
+
+    static void EnragedExplosion(Grenade __instance, ref bool ___exploded)
+    {
+        float sizemult = 5f;
+
         ___exploded = true;
         int checkSize = Mathf.RoundToInt(3 * sizemult);
 
@@ -753,7 +762,7 @@ class PatchRocketProxExplode
             {
                 explosion.originEnemy = __instance.originEnemy;
             }
-            if(explosion.damage != 0)
+            if (explosion.damage != 0)
             {
                 explosion.rocketExplosion = true;
             }
@@ -766,14 +775,12 @@ class PatchRocketProxExplode
         UnityEngine.Object.Destroy(__instance.gameObject);
 
         // destroy rocket enragement effect if present
+        int id = __instance.GetInstanceID();
         if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
         {
             UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
             PatchGTFire.enragedRocketEffects.Remove(id);
         }
-
-        // skip original
-        return false;
     }
 }
 
