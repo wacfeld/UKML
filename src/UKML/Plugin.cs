@@ -728,7 +728,7 @@ class PatchRocketProxExplode
         return false;
     }
 
-    static void EnragedExplosion(Grenade __instance, ref bool ___exploded)
+    public static void EnragedExplosion(Grenade __instance, ref bool ___exploded)
     {
         float sizemult = 5f;
 
@@ -781,6 +781,124 @@ class PatchRocketProxExplode
             UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
             PatchGTFire.enragedRocketEffects.Remove(id);
         }
+    }
+}
+
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("Collision")]
+class PatchEnragedRocketCollision
+{
+    static bool Prefix(Collider other, Grenade __instance, ref bool ___exploded, ref bool ___enemy, CapsuleCollider ___col,
+        Rigidbody ___rb, ref bool ___hasBeenRidden)
+    {
+        int id = __instance.GetInstanceID();
+
+        // if it's not an enraged rocket then run the original
+        if (!PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            return true;
+        }
+        
+        // copy original's logic but with different explosion call at the end
+        if (___exploded || (!___enemy && other.CompareTag("Player")) || other.gameObject.layer == 14 || other.gameObject.layer == 20)
+        {
+            return false;
+        }
+        bool flag = false;
+        if ((other.gameObject.layer == 11 || other.gameObject.layer == 10) && (other.attachedRigidbody ? other.attachedRigidbody.TryGetComponent<EnemyIdentifierIdentifier>(out var component) : other.TryGetComponent<EnemyIdentifierIdentifier>(out component)) && (bool)component.eid)
+        {
+            if (component.eid.enemyType == EnemyType.MaliciousFace && !component.eid.isGasolined)
+            {
+                flag = true;
+            }
+            else
+            {
+                if (__instance.ignoreEnemyType.Count > 0 && __instance.ignoreEnemyType.Contains(component.eid.enemyType))
+                {
+                    return false;
+                }
+                if (component.eid.dead)
+                {
+                    Physics.IgnoreCollision(___col, other, ignore: true);
+                    return false;
+                }
+            }
+        }
+        if (!flag && other.gameObject.CompareTag("Armor"))
+        {
+            flag = true;
+        }
+        if (flag)
+        {
+            ___rb.constraints = RigidbodyConstraints.None;
+            if (Physics.Raycast(__instance.transform.position - __instance.transform.forward, __instance.transform.forward, out var hitInfo, float.PositiveInfinity, LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment)))
+            {
+                Vector3 velocity = ___rb.velocity;
+                ___rb.velocity = Vector3.zero;
+                ___rb.AddForce(Vector3.Reflect(velocity.normalized, hitInfo.normal).normalized * velocity.magnitude * 2f, ForceMode.VelocityChange);
+                __instance.transform.forward = Vector3.Reflect(velocity.normalized, hitInfo.normal).normalized;
+                ___rb.AddTorque(UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(0, 250));
+            }
+            UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.ineffectiveSound, __instance.transform.position, Quaternion.identity).GetComponent<AudioSource>().volume = 0.75f;
+            return false;
+        }
+        bool harmless = false;
+        bool big = false;
+        bool flag2 = false;
+        if (__instance.rocket)
+        {
+            if (other.gameObject.layer == 10 || other.gameObject.layer == 11)
+            {
+                EnemyIdentifierIdentifier component2 = other.GetComponent<EnemyIdentifierIdentifier>();
+                if ((bool)component2 && (bool)component2.eid)
+                {
+                    if (__instance.levelledUp)
+                    {
+                        flag2 = true;
+                    }
+                    else if (!component2.eid.dead && !component2.eid.flying && (((bool)component2.eid.gce && !component2.eid.gce.onGround) || (float)component2.eid.timeSinceSpawned <= 0.15f))
+                    {
+                        flag2 = true;
+                    }
+                    if (component2.eid.stuckMagnets.Count > 0)
+                    {
+                        foreach (Magnet stuckMagnet in component2.eid.stuckMagnets)
+                        {
+                            if (!(stuckMagnet == null))
+                            {
+                                stuckMagnet.DamageMagnet((!flag2) ? 1 : 2);
+                            }
+                        }
+                    }
+                    if (component2.eid == __instance.originEnemy && !component2.eid.blessed)
+                    {
+                        if (___hasBeenRidden && !__instance.frozen && __instance.originEnemy.enemyType == EnemyType.Guttertank)
+                        {
+                            __instance.originEnemy.Explode(fromExplosion: true);
+                            MonoSingleton<StyleHUD>.Instance.AddPoints(300, "ultrakill.roundtrip", null, component2.eid);
+                        }
+                        else
+                        {
+                            MonoSingleton<StyleHUD>.Instance.AddPoints(100, "ultrakill.rocketreturn", null, component2.eid);
+                        }
+                    }
+                }
+                MonoSingleton<TimeController>.Instance.HitStop(0.05f);
+            }
+            else if (!___enemy || !other.gameObject.CompareTag("Player"))
+            {
+                harmless = true;
+            }
+        }
+        else if (!LayerMaskDefaults.IsMatchingLayer(other.gameObject.layer, LMD.Environment))
+        {
+            MonoSingleton<TimeController>.Instance.HitStop(0.05f);
+        }
+        PatchRocketProxExplode.EnragedExplosion(__instance, ref ___exploded);
+        //Explode(big, harmless, flag2);
+
+        // skip original
+        return false;
     }
 }
 
