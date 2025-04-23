@@ -3,7 +3,7 @@
 ## unreleased
 
 - mine punch, unslippable, unenrageable, parryable
-- enraged rocket explosion only big if not shot/impact hammered
+- enraged rocket explosion can be made small if shot
 - mines can be parried multiple times
 - mine friendly fire off by default
 - mines parried by someone other than the player can collide with the player
