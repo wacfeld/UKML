@@ -48,6 +48,19 @@ All changes are relative to Brutal difficulty
 - Increased animation speed (1.2x for unenraged, 1.5x for enraged)
 </details>
 
+<details>
+<summary>Guttertank changes</summary>
+
+- Guttertanks enrage when their punches whiff
+- Enraged Guttertanks fire enraged rockets, which have a much larger explosion
+  - Enraged rocket explosions can be mitigated by shooting them with a hitscan weapon, or hitting them with an impact hammer
+- Guttertanks will start projectile-boosting mines at the player when the freezeframe is active
+  - The projectile-boost animation is like a regular Guttertank punch except that it can be parried, can't enraged the Guttertank, and can't make the Guttertank slip
+- Mines can be parried multiple times
+- Mines that were parried by someone other than the player can collide with the player
+- Mines not parried by the player will not damage enemies (but can still light susceptible enemies on fire)
+</details>
+
 ## Install
 
 ### Manually
