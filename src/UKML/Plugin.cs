@@ -9,6 +9,8 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using System.Reflection;
+using UnityEngine.AI;
+using System.Runtime.InteropServices;
 
 //using UnityEngine.AddressableAssets.ResourceLocators;
 //using UnityEngine.ResourceManagement.ResourceLocations;
@@ -18,7 +20,7 @@ public class Plugin : BaseUnityPlugin
 {
     public const string PLUGIN_GUID = "wacfeld.ukml";
     public const string PLUGIN_NAME = "ULTRAKILL Mustn't Live";
-    public const string PLUGIN_VERSION = "0.4.2";
+    public const string PLUGIN_VERSION = "0.5.0";
 
     readonly Harmony harmony = new(PLUGIN_GUID);
     
@@ -574,3 +576,765 @@ class PatchCerbAnim
         }
     }
 }
+
+// guttertanks enrage if punch whiffs, regardless of tripping or not
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchStop")]
+class PatchGTEnrage
+{
+    public static HashSet<int> enraged = new HashSet<int>();
+    public static Dictionary<int, GameObject> effects = new Dictionary<int, GameObject>();
+    static void Postfix(Guttertank __instance, ref bool ___punchHit, Machine ___mach)
+    {
+        if(!___punchHit)
+        {
+            int id = __instance.GetInstanceID();
+            // if already enraged, no need to do anything
+            if (enraged.Contains(id))
+            {
+                return;
+            }
+
+            // add to set of enraged guttertanks
+            enraged.Add(id);
+
+            // create enrage effect and put in dictionary
+            Console.WriteLine("enraging!");
+            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, ___mach.chest.transform);
+            effects.Add(id, enrageEffect);
+        }
+    }
+}
+
+// remove the enragement effect from guttertanks upon death
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("Death")]
+class PatchGTUnenrage
+{
+    static void Postfix(Guttertank __instance)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTEnrage.effects.ContainsKey(id))
+        {
+            Console.WriteLine("destroying enrage effect");
+            UnityEngine.Object.Destroy(PatchGTEnrage.effects[id]);
+            PatchGTEnrage.effects.Remove(id);
+        }
+
+        if(PatchGTEnrage.enraged.Contains(id))
+        {
+            PatchGTEnrage.enraged.Remove(id);
+        }
+    }
+}
+
+// if the GT is enraged then we overwrite the original function and mark the fired rocket for large explosion
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("FireRocket")]
+class PatchGTFire
+{
+    public static Dictionary<int, GameObject> enragedRocketEffects = new Dictionary<int, GameObject>();
+
+    //static void Postfix()
+    //{
+    //    Console.WriteLine("FireRocket postfix");
+    //}
+
+    static bool Prefix(Guttertank __instance, Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid, ref int ___difficulty, ref float ___shootCooldown)
+    {
+        //Console.WriteLine("FireRocket prefix");
+
+        UnityEngine.Object.Instantiate(__instance.rocketParticle, __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+        Grenade grenade = UnityEngine.Object.Instantiate(__instance.rocket, MonoSingleton<WeaponCharges>.Instance.rocketFrozen ? (__instance.shootPoint.position + __instance.shootPoint.forward * 2.5f) : __instance.shootPoint.position, Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+        grenade.proximityTarget = ___eid.target;
+        grenade.ignoreEnemyType.Add(___eid.enemyType);
+        grenade.originEnemy = ___eid;
+        if (___eid.totalDamageModifier != 1f)
+        {
+            grenade.totalDamageMultiplier = ___eid.totalDamageModifier;
+        }
+        if (___difficulty == 1)
+        {
+            grenade.rocketSpeed *= 0.8f;
+        }
+        else if (___difficulty == 0)
+        {
+            grenade.rocketSpeed *= 0.6f;
+        }
+        ___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+
+        int id = __instance.GetInstanceID();
+        if (PatchGTEnrage.enraged.Contains(id))
+        {
+            // add enragement effect to rocket
+            Console.WriteLine("enraging rocket");
+            GameObject enrageEffect = UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.enrageEffect, grenade.rb.transform);
+            AudioSource aud = enrageEffect.GetComponent<AudioSource>();
+            aud.pitch = 3f;
+
+            // add to dictionary
+            int rocketId = grenade.GetInstanceID();
+            if(!enragedRocketEffects.ContainsKey(rocketId))
+            {
+                enragedRocketEffects.Add(rocketId, enrageEffect);
+            }
+        }
+
+        // skip original
+        return false;
+    }
+}
+
+// override Grenade.Explode() in order to modify rocket behaviour for guttertanks
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("Explode")]
+class PatchRocketExplode
+{
+    static void Postfix(Grenade __instance)
+    {
+        // destroy rocket enragement effect if present
+        int id = __instance.GetInstanceID();
+        if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
+            PatchGTFire.enragedRocketEffects.Remove(id);
+        }
+    }
+}
+
+// ProximityExplosion() just calls Explode()
+// we override it to implement enraged Guttertank rockets
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("ProximityExplosion")]
+class PatchRocketProxExplode
+{
+    static bool Prefix(Grenade __instance, ref bool ___exploded)
+    {
+        int id = __instance.GetInstanceID();
+        
+        // if it's not an enraged rocket then run the original
+        if(!PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            return true;
+        }
+        if (___exploded)
+        {
+            return false;
+        }
+
+        EnragedExplosion(__instance, ref ___exploded);
+
+        // skip original
+        return false;
+    }
+
+    public static void EnragedExplosion(Grenade __instance, ref bool ___exploded)
+    {
+        float sizemult = 5f;
+
+        ___exploded = true;
+        int checkSize = Mathf.RoundToInt(3 * sizemult);
+
+        MonoSingleton<StainVoxelManager>.Instance.TryIgniteAt(__instance.transform.position, checkSize);
+
+        GameObject gameObject = UnityEngine.Object.Instantiate(__instance.explosion, __instance.transform.position, Quaternion.identity);
+        Explosion[] components = gameObject.GetComponentsInChildren<Explosion>();
+        foreach (Explosion explosion in components)
+        {
+            explosion.sourceWeapon = __instance.sourceWeapon;
+            explosion.hitterWeapon = __instance.hitterWeapon;
+            explosion.isFup = false;
+            if (__instance.enemy)
+            {
+                explosion.enemy = true;
+            }
+            if (__instance.ignoreEnemyType.Count > 0)
+            {
+                explosion.toIgnore = __instance.ignoreEnemyType;
+            }
+            explosion.maxSize *= 1.5f * sizemult;
+            explosion.speed *= 3f;
+            if (__instance.totalDamageMultiplier != 1f)
+            {
+                explosion.damage = (int)((float)explosion.damage * __instance.totalDamageMultiplier);
+            }
+            if ((bool)__instance.originEnemy)
+            {
+                explosion.originEnemy = __instance.originEnemy;
+            }
+            if (explosion.damage != 0)
+            {
+                explosion.rocketExplosion = true;
+            }
+            else // get rid of 0 damage leading explosion
+            {
+                UnityEngine.Object.Destroy(explosion);
+            }
+        }
+        //gameObject.transform.localScale *= sizemult;
+        UnityEngine.Object.Destroy(__instance.gameObject);
+
+        // destroy rocket enragement effect if present
+        int id = __instance.GetInstanceID();
+        if (PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            UnityEngine.Object.Destroy(PatchGTFire.enragedRocketEffects[id]);
+            PatchGTFire.enragedRocketEffects.Remove(id);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(Grenade))]
+[HarmonyPatch("Collision")]
+class PatchEnragedRocketCollision
+{
+    static bool Prefix(Collider other, Grenade __instance, ref bool ___exploded, ref bool ___enemy, CapsuleCollider ___col,
+        Rigidbody ___rb, ref bool ___hasBeenRidden)
+    {
+        int id = __instance.GetInstanceID();
+
+        // if it's not an enraged rocket then run the original
+        if (!PatchGTFire.enragedRocketEffects.ContainsKey(id))
+        {
+            return true;
+        }
+        
+        // copy original's logic but with different explosion call at the end
+        if (___exploded || (!___enemy && other.CompareTag("Player")) || other.gameObject.layer == 14 || other.gameObject.layer == 20)
+        {
+            return false;
+        }
+        bool flag = false;
+        if ((other.gameObject.layer == 11 || other.gameObject.layer == 10) && (other.attachedRigidbody ? other.attachedRigidbody.TryGetComponent<EnemyIdentifierIdentifier>(out var component) : other.TryGetComponent<EnemyIdentifierIdentifier>(out component)) && (bool)component.eid)
+        {
+            if (component.eid.enemyType == EnemyType.MaliciousFace && !component.eid.isGasolined)
+            {
+                flag = true;
+            }
+            else
+            {
+                if (__instance.ignoreEnemyType.Count > 0 && __instance.ignoreEnemyType.Contains(component.eid.enemyType))
+                {
+                    return false;
+                }
+                if (component.eid.dead)
+                {
+                    Physics.IgnoreCollision(___col, other, ignore: true);
+                    return false;
+                }
+            }
+        }
+        if (!flag && other.gameObject.CompareTag("Armor"))
+        {
+            flag = true;
+        }
+        if (flag)
+        {
+            ___rb.constraints = RigidbodyConstraints.None;
+            if (Physics.Raycast(__instance.transform.position - __instance.transform.forward, __instance.transform.forward, out var hitInfo, float.PositiveInfinity, LayerMaskDefaults.Get(LMD.EnemiesAndEnvironment)))
+            {
+                Vector3 velocity = ___rb.velocity;
+                ___rb.velocity = Vector3.zero;
+                ___rb.AddForce(Vector3.Reflect(velocity.normalized, hitInfo.normal).normalized * velocity.magnitude * 2f, ForceMode.VelocityChange);
+                __instance.transform.forward = Vector3.Reflect(velocity.normalized, hitInfo.normal).normalized;
+                ___rb.AddTorque(UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(0, 250));
+            }
+            UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.ineffectiveSound, __instance.transform.position, Quaternion.identity).GetComponent<AudioSource>().volume = 0.75f;
+            return false;
+        }
+        bool harmless = false;
+        bool big = false;
+        bool flag2 = false;
+        if (__instance.rocket)
+        {
+            if (other.gameObject.layer == 10 || other.gameObject.layer == 11)
+            {
+                EnemyIdentifierIdentifier component2 = other.GetComponent<EnemyIdentifierIdentifier>();
+                if ((bool)component2 && (bool)component2.eid)
+                {
+                    if (__instance.levelledUp)
+                    {
+                        flag2 = true;
+                    }
+                    else if (!component2.eid.dead && !component2.eid.flying && (((bool)component2.eid.gce && !component2.eid.gce.onGround) || (float)component2.eid.timeSinceSpawned <= 0.15f))
+                    {
+                        flag2 = true;
+                    }
+                    if (component2.eid.stuckMagnets.Count > 0)
+                    {
+                        foreach (Magnet stuckMagnet in component2.eid.stuckMagnets)
+                        {
+                            if (!(stuckMagnet == null))
+                            {
+                                stuckMagnet.DamageMagnet((!flag2) ? 1 : 2);
+                            }
+                        }
+                    }
+                    if (component2.eid == __instance.originEnemy && !component2.eid.blessed)
+                    {
+                        if (___hasBeenRidden && !__instance.frozen && __instance.originEnemy.enemyType == EnemyType.Guttertank)
+                        {
+                            __instance.originEnemy.Explode(fromExplosion: true);
+                            MonoSingleton<StyleHUD>.Instance.AddPoints(300, "ultrakill.roundtrip", null, component2.eid);
+                        }
+                        else
+                        {
+                            MonoSingleton<StyleHUD>.Instance.AddPoints(100, "ultrakill.rocketreturn", null, component2.eid);
+                        }
+                    }
+                }
+                MonoSingleton<TimeController>.Instance.HitStop(0.05f);
+            }
+            else if (!___enemy || !other.gameObject.CompareTag("Player"))
+            {
+                harmless = true;
+            }
+        }
+        else if (!LayerMaskDefaults.IsMatchingLayer(other.gameObject.layer, LMD.Environment))
+        {
+            MonoSingleton<TimeController>.Instance.HitStop(0.05f);
+        }
+        PatchRocketProxExplode.EnragedExplosion(__instance, ref ___exploded);
+        //Explode(big, harmless, flag2);
+
+        // skip original
+        return false;
+    }
+}
+
+[HarmonyPatch]
+class PatchLandmine
+{
+    // Explode() is overloaded so we have to identify it like this
+    static MethodBase TargetMethod()
+    {
+        return AccessTools.Method(
+            typeof(Landmine),
+            "Explode",
+            new Type[] { typeof(bool) }
+        );
+    }
+
+    public static HashSet<int> parriedByPlayer = new HashSet<int>();
+
+    // override the original explode function so we can set the enemy flag properly
+    static bool Prefix(bool super, Landmine __instance, ref bool ___exploded, GameObject ___superExplosion, GameObject ___explosion)
+    {
+        if(!___exploded)
+        {
+            // create explosion
+            ___exploded = true;
+            Explosion[] components = UnityEngine.Object.Instantiate(super ? ___superExplosion : ___explosion, __instance.transform.position, Quaternion.identity).GetComponentsInChildren<Explosion>();
+
+            // if not parried by player, set enemy to true
+            int id = __instance.GetInstanceID();
+            bool enemy = !parriedByPlayer.Contains(id);
+            foreach(Explosion explosion in components)
+            {
+                explosion.enemy = enemy;
+            }
+
+            UnityEngine.Object.Destroy(__instance.gameObject);
+        }
+        return false;
+    }
+}
+
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("Parry")]
+class PatchLandmineParry
+{
+    static void Postfix(Landmine __instance, GameObject ___parryZone, ref Vector3 ___movementDirection)
+    {
+        int id = __instance.GetInstanceID();
+        if(!PatchLandmine.parriedByPlayer.Contains(id))
+        {
+            PatchLandmine.parriedByPlayer.Add(id);
+        }
+
+        // override disabling of parry zone after parry
+        ___parryZone.SetActive(value: true);
+    }
+}
+
+// override Guttertank.Update()
+// when freezeframe active, replace fire rocket with mine punch
+// TODO when enraged, add SRS cannonball attack
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("Update")]
+class PatchGTUpdate
+{
+    public static Dictionary<int, bool> punchParryable = new Dictionary<int, bool>();
+    public static HashSet<int> punchedMines = new HashSet<int>();
+
+    static bool Prefix(Guttertank __instance, ref bool ___dead, EnemyIdentifier ___eid, ref bool ___inAction, ref bool ___overrideTarget,
+        ref Vector3 ___overrideTargetPosition, ref bool ___trackInAction, ref bool ___moveForward, ref float ___lineOfSightTimer, ref float ___shootCooldown,
+        ref float ___mineCooldown, ref int ___difficulty, ref float ___punchCooldown, Animator ___anim, NavMeshAgent ___nma, ref bool ___lookAtTarget, ref bool ___punching,
+        SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach, Collider ___col)
+    {
+        if(___dead || ___eid.target == null)
+        {
+            return false;
+        }
+        if(___inAction)
+        {
+            Vector3 headPosition = ___eid.target.headPosition;
+            if (___overrideTarget)
+            {
+                headPosition = ___overrideTargetPosition;
+            }
+            if(___trackInAction || ___moveForward)
+            {
+                __instance.transform.rotation = Quaternion.RotateTowards(__instance.transform.rotation, Quaternion.LookRotation(new Vector3(headPosition.x, __instance.transform.position.y, headPosition.z) - __instance.transform.position), (float)(___trackInAction ? 360 : 90) * Time.deltaTime);
+            }
+        }
+        else
+        {
+            RaycastHit hitInfo;
+            bool flag = !Physics.Raycast(__instance.transform.position + Vector3.up, ___eid.target.headPosition - (__instance.transform.position + Vector3.up), out hitInfo, Vector3.Distance(___eid.target.position, __instance.transform.position + Vector3.up), LayerMaskDefaults.Get(LMD.Environment));
+            ___lineOfSightTimer = Mathf.MoveTowards(___lineOfSightTimer, flag ? 1 : 0, Time.deltaTime * ___eid.totalSpeedModifier);
+            if (___shootCooldown > 0f)
+            {
+                ___shootCooldown = Mathf.MoveTowards(___shootCooldown, 0f, Time.deltaTime * ___eid.totalSpeedModifier);
+            }
+            if (___mineCooldown > 0f)
+            {
+                ___mineCooldown = Mathf.MoveTowards(___mineCooldown, 0f, Time.deltaTime * ((___lineOfSightTimer >= 0.5f) ? 0.5f : 1f) * ___eid.totalSpeedModifier);
+            }
+            if (___lineOfSightTimer >= 0.5f)
+            {
+                if (___difficulty <= 1 && Vector3.Distance(__instance.transform.position, ___eid.target.position) > 10f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) > 10f)
+                {
+                    ___punchCooldown = ((___difficulty == 1) ? 1 : 2);
+                }
+                if (___punchCooldown <= 0f && (Vector3.Distance(__instance.transform.position, ___eid.target.position) < 10f || Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(0.5f)) < 10f))
+                {
+                    var method = typeof(Guttertank).GetMethod("Punch", BindingFlags.NonPublic | BindingFlags.Instance);
+                    method.Invoke(__instance, null);
+                    //Punch();
+                }
+                else if (___shootCooldown <= 0f && Vector3.Distance(__instance.transform.position, ___eid.target.PredictTargetPosition(1f)) > 15f)
+                {
+                    // if freezeframe active, punch a mine
+                    if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
+                    {
+                        MinePunch(__instance, ref ___inAction, ___nma, ref ___trackInAction, ref ___lookAtTarget, ref ___punching,
+                            ref ___shootCooldown, ref ___difficulty, ___anim, ___sc, ref ___punchHit, ___mach, ref ___overrideTargetPosition, ___eid,
+                            ref ___overrideTarget, ___col);
+                    }
+                    // otherwise fire like normal
+                    else
+                    {
+                        var method = typeof(Guttertank).GetMethod("PrepRocket", BindingFlags.NonPublic | BindingFlags.Instance);
+                        method.Invoke(__instance, null);
+                        //PrepRocket();
+                    }
+                }
+            }
+            // don't place mines if freezeframe active
+            if (!___inAction && ___mineCooldown <= 0f && !MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
+            {
+                var method = typeof(Guttertank).GetMethod("CheckMines", BindingFlags.NonPublic | BindingFlags.Instance);
+                //if (CheckMines())
+                if ((bool) method.Invoke(__instance, null))
+                {
+                    var method2 = typeof(Guttertank).GetMethod("PrepMine", BindingFlags.NonPublic | BindingFlags.Instance);
+                    method2.Invoke(__instance, null);
+                    //PrepMine();
+                }
+                else
+                {
+                    ___mineCooldown = 0.5f;
+                }
+            }
+        }
+        ___punchCooldown = Mathf.MoveTowards(___punchCooldown, 0f, Time.deltaTime * ___eid.totalSpeedModifier);
+        ___anim.SetBool("Walking", ___nma.velocity.magnitude > 2.5f);
+        // skip original
+        return false;
+    }
+
+    static void MinePunch(Guttertank __instance, ref bool ___inAction, NavMeshAgent ___nma, ref bool ___trackInAction, ref bool ___lookAtTarget, ref bool ___punching,
+        ref float ___shootCooldown, ref int ___difficulty, Animator ___anim, SwingCheck2 ___sc, ref bool ___punchHit, Machine ___mach, ref Vector3 ___overrideTargetPosition,
+        EnemyIdentifier ___eid, ref bool ___overrideTarget, Collider ___col)
+    {
+        Console.WriteLine("mine punch!");
+
+        // play punch animation and sound and unparryable flash
+        ___anim.Play("Punch", 0, 0f);
+        UnityEngine.Object.Instantiate(__instance.punchPrepSound, __instance.transform);
+        UnityEngine.Object.Instantiate(MonoSingleton<DefaultReferenceManager>.Instance.parryableFlash,
+            ___sc.transform.position + __instance.transform.forward, __instance.transform.rotation).transform.localScale *= 5f;
+
+        // set state variables
+        ___inAction = true;
+        ___nma.enabled = false;
+        ___trackInAction = true;
+        ___lookAtTarget = true;
+        ___punching = true;
+        ___punchHit = true;
+
+        // set parryable in dictionary
+        int id = __instance.GetInstanceID();
+        if (!punchParryable.ContainsKey(id))
+        {
+            punchParryable.Add(id, true);
+        }
+        else
+        {
+            punchParryable[id] = true;
+        }
+        ___mach.parryable = true;
+
+        // TODO play parry sound
+
+        // set shot cooldown as normal
+        //___shootCooldown = UnityEngine.Random.Range(1.25f, 1.75f) - ((___difficulty >= 4) ? 0.5f : 0f);
+        ___shootCooldown = 0.25f;
+
+        // predict player position
+        PredictTargetMine(__instance, ___eid, ref ___overrideTarget, ref ___difficulty, ref ___overrideTargetPosition, ___col, ___mach);
+    }
+
+    // a copy of Guttertank.PredictTarget() but without the parryable flash, and adjusted for the speed of a parried mine
+    static void PredictTargetMine(Guttertank __instance, EnemyIdentifier ___eid, ref bool ___overrideTarget, ref int ___difficulty,
+        ref Vector3 ___overrideTargetPosition, Collider ___col, Machine ___mach)
+    {
+        if (___eid.target != null)
+        {
+            ___overrideTarget = true;
+            //float num = 1f;
+            //if (___difficulty == 1)
+            //{
+            //    num = 0.75f;
+            //}
+            //else if (___difficulty == 0)
+            //{
+            //    num = 0.5f;
+            //}
+            float speed = 250f;
+            Vector3 minePos = PatchGTPunchParryable.GetMinePos(___mach, ref ___overrideTargetPosition);
+
+            ___overrideTargetPosition = ___eid.target.PredictTargetPosition(0.5f + (Vector3.Distance(minePos, ___eid.target.headPosition) / speed));
+            if (Physics.Raycast(___eid.target.position, Vector3.down, 15f, LayerMaskDefaults.Get(LMD.Environment)))
+            {
+                ___overrideTargetPosition = new Vector3(___overrideTargetPosition.x, ___eid.target.headPosition.y, ___overrideTargetPosition.z);
+            }
+            bool flag = false;
+            if (Physics.Raycast(__instance.aimBone.position, ___overrideTargetPosition - __instance.aimBone.position, out var hitInfo, Vector3.Distance(___overrideTargetPosition, __instance.aimBone.position), LayerMaskDefaults.Get(LMD.EnvironmentAndBigEnemies)) && (!hitInfo.transform.TryGetComponent<Breakable>(out var component) || !component.playerOnly))
+            {
+                flag = true;
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+            if (!flag && ___overrideTargetPosition != ___eid.target.headPosition && ___col.Raycast(new Ray(___eid.target.headPosition, (___overrideTargetPosition - ___eid.target.headPosition).normalized), out hitInfo, Vector3.Distance(___eid.target.headPosition, ___overrideTargetPosition)))
+            {
+                ___overrideTargetPosition = ___eid.target.headPosition;
+            }
+        }
+    }
+}
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("SlowUpdate")]
+//class PatchGTSlowUpdate
+//{
+//    static void Prefix(Guttertank __instance, NavMeshAgent ___nma, ref bool ___inAction)
+//    {
+//        if(___nma == null)
+//        {
+//            return;
+//        }
+//        if (MonoSingleton<WeaponCharges>.Instance.rocketFrozen)
+//        {
+//            ___nma.enabled = false;
+//        }
+//        else if(!___inAction)
+//        {
+//            ___nma.enabled = true;
+//        }
+//    }
+//}
+
+// if our mine is marked as punched by a guttertank, immediately activate and parry it after startup
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("Start")]
+class PatchLandmineStart
+{
+    static void Postfix(Landmine __instance, Rigidbody ___rb, ref bool ___activated, GameObject ___parryZone,
+        ref bool ___parried, ref Vector3 ___movementDirection)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchedMines.Contains(id))
+        {
+            PatchGTUpdate.punchedMines.Remove(id);
+
+            // manually activate
+            ___rb.isKinematic = false;
+            ___rb.useGravity = true;
+            ___activated = true;
+            ___parryZone.SetActive(value: true);
+
+            // manually parry
+            ___parried = true;
+            ___movementDirection = __instance.transform.forward;
+            ___rb.useGravity = true; // redundant, oh well
+            __instance.SetColor(new Color(0f, 1f, 1f));
+            __instance.Invoke("Explode", 3f);
+        }
+    }
+}
+
+
+// if punchParryable[id] is set, create a landmine and hurl it at the player
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchActive")]
+class PatchGTPunchParryable
+{
+    public static Vector3 GetMinePos(Machine ___mach, ref Vector3 ___overrideTargetPosition)
+    {
+        Vector3 minePos = ___mach.chest.transform.position;
+        Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
+        minePos += mineDirection * 10f;
+        return minePos;
+    }
+
+    static void Postfix(Guttertank __instance, SwingCheck2 ___sc, ref bool ___moveForward, ref bool ___trackInAction, ref Vector3 ___overrideTargetPosition, EnemyIdentifier ___eid,
+        Machine ___mach)
+    {
+        Console.WriteLine("punch active!");
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+        {
+            // create a landmine with the same position and rotation as a rocket
+            //Vector3 minePos = __instance.shootPoint.position;
+            //Vector3 mineDirection = (___overrideTargetPosition - minePos).normalized;
+            //minePos += mineDirection * 3.5f;
+            //minePos -= Vector3.up;
+            Vector3 minePos = GetMinePos(___mach, ref ___overrideTargetPosition);
+
+            Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, minePos,
+                Quaternion.LookRotation(___overrideTargetPosition - minePos));
+            //Landmine mine = UnityEngine.Object.Instantiate(__instance.landmine, __instance.shootPoint.position + __instance.shootPoint.forward * 2.5f,
+                //Quaternion.LookRotation(___overrideTargetPosition - __instance.shootPoint.position));
+            if (mine.TryGetComponent<Landmine>(out var component))
+            {
+                component.originEnemy = ___eid;
+
+                // store the mine ID for later so it knows to parry itself right after Start()
+                int mineId = component.GetInstanceID();
+                PatchGTUpdate.punchedMines.Add(mineId);
+            }
+        }
+    }
+}
+
+// after GT punch over reset punchParryable, and also clear parryable flag
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("PunchStop")]
+class PatchGTPunchStopParryable
+{
+    static void Postfix(Guttertank __instance, Machine ___mach)
+    {
+        int id = __instance.GetInstanceID();
+        if (PatchGTUpdate.punchParryable.ContainsKey(id))
+        {
+            PatchGTUpdate.punchParryable[id] = false;
+            ___mach.parryable = false;
+        }
+    }
+}
+
+// if it was a mine punch that got parried, don't play the PunchStagger animation
+[HarmonyPatch(typeof(Guttertank))]
+[HarmonyPatch("GotParried")]
+class PatchGTParried
+{
+    static bool Prefix(Guttertank __instance, Machine ___mach)
+    {
+        int id = __instance.GetInstanceID();
+        if(PatchGTUpdate.punchParryable.ContainsKey(id) && PatchGTUpdate.punchParryable[id])
+        {
+            ___mach.parryable = false;
+            return false;
+        }
+        return true;
+    }
+}
+
+// override the landmine collision function to allow it to collide with player
+[HarmonyPatch(typeof(Landmine))]
+[HarmonyPatch("OnCollisionEnter")]
+class PatchMineCollide
+{
+    static bool Prefix(Landmine __instance, ref bool ___parried, ref bool ___exploded, Collision collision)
+    {
+        if (!___parried || ___exploded)
+        {
+            return false;
+        }
+
+        // don't collide if parried by player (to avoid cases where parrying causes immediate detonation)
+        int id = __instance.GetInstanceID();
+        if(collision.gameObject == MonoSingleton<NewMovement>.Instance.gameObject && PatchLandmine.parriedByPlayer.Contains(id))
+        {
+            return false;
+        }
+
+        EnemyIdentifier component = null;
+        EnemyIdentifierIdentifier component2 = null;
+        if (collision.gameObject.layer == 26 && collision.gameObject.TryGetComponent<ParryHelper>(out var component3) && (bool)component3.target)
+        {
+            component3.target.TryGetComponent<EnemyIdentifier>(out component);
+        }
+        if ((bool)component || (collision.gameObject.TryGetComponent<EnemyIdentifierIdentifier>(out component2) && (bool)component2.eid) || collision.gameObject.TryGetComponent<EnemyIdentifier>(out component))
+        {
+            if ((bool)component2 && (bool)component2.eid)
+            {
+                component = component2.eid;
+            }
+            if (!component.dead)
+            {
+                if (component == __instance.originEnemy)
+                {
+                    MonoSingleton<StyleHUD>.Instance.AddPoints(150, "ultrakill.landyours", null, component);
+                }
+                else
+                {
+                    MonoSingleton<StyleHUD>.Instance.AddPoints(75, "ultrakill.serve", null, component);
+                }
+                if (component.enemyType == EnemyType.Gutterman && component.TryGetComponent<Gutterman>(out var component4) && component4.hasShield)
+                {
+                    component4.ShieldBreak(player: true, flash: false);
+                }
+            }
+        }
+        var method = typeof(Landmine).GetMethod("Explode", BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, new Type[] { typeof(bool)}, null);
+        method.Invoke(__instance, new object[] { true });
+        //Explode(super: true);
+        return false;
+    }
+}
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("PredictTarget")]
+//class PatchGTPredict
+//{
+//    static void Postfix()
+//    {
+//        Console.WriteLine("predicting target!");
+//    }
+//}
+
+//[HarmonyPatch(typeof(Guttertank))]
+//[HarmonyPatch("PrepRocket")]
+//class PatchGTPrepRocket
+//{
+//    static void Prefix()
+//    {
+//        Console.WriteLine("PrepRocket prefix");
+//    }
+//    static void Postfix()
+//    {
+//        Console.WriteLine("PrepRocket postfix");
+//    }
+//}

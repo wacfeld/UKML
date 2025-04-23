@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 - 2025-04-23
+
+- Guttertanks enrage when their punches whiff
+- Enraged Guttertanks fire enraged rockets, which have a much larger explosion
+  - Enraged rocket explosions can be mitigated by shooting them with a hitscan weapon, or hitting them with an impact hammer
+- Guttertanks will start projectile-boosting mines at the player when the freezeframe is active
+  - The projectile-boost animation is like a regular Guttertank punch except that it can be parried, can't enraged the Guttertank, and can't make the Guttertank slip
+- Mines can be parried multiple times
+- Mines that were parried by someone other than the player can collide with the player
+- Mines not parried by the player will not damage enemies (but can still light susceptible enemies on fire)
+
 ## 0.4.2 - 2025-04-17
 
 - Lower hard damage multiplier to 50%

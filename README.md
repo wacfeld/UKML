@@ -6,7 +6,8 @@ Work in progress.
 ## Usage
 
 All changes are applied universally.
-Therefore to play the new difficulty, simply select Brutal difficulty with the mod installed.
+Therefore to play the new difficulty, simply select Brutal difficulty with the mod enabled.
+Of course, you can play the mod on lower difficulties as well, if you want to experience the behavioural changes without the ludicrous speed.
 
 ## Current features
 
@@ -47,8 +48,27 @@ All changes are relative to Brutal difficulty
 - Increased animation speed (1.2x for unenraged, 1.5x for enraged)
 </details>
 
-## Manual Installation
+<details>
+<summary>Guttertank changes</summary>
+
+- Guttertanks enrage when their punches whiff
+- Enraged Guttertanks fire enraged rockets, which have a much larger explosion
+  - Enraged rocket explosions can be mitigated by shooting them with a hitscan weapon, or hitting them with an impact hammer
+- Guttertanks will start projectile-boosting mines at the player when the freezeframe is active
+  - The projectile-boost animation is like a regular Guttertank punch except that it can be parried, can't enraged the Guttertank, and can't make the Guttertank slip
+- Mines can be parried multiple times
+- Mines that were parried by someone other than the player can collide with the player
+- Mines not parried by the player will not damage enemies (but can still light susceptible enemies on fire)
+</details>
+
+## Install
+
+### Manually
 
 - Install [BepInEx](https://thunderstore.io/c/ultrakill/p/BepInEx/BepInExPack/) if you don't have it already
 - Go to the latest [Release](https://github.com/wacfeld/UKML/releases)
 - Download the dll and move it to `ULTRAKILL/BepInEx/plugins`
+
+### Using a mod manager
+
+- Get the latest version from [Thunderstore](https://thunderstore.io/c/ultrakill/p/wacfeld/ULTRAKILL_MUSTNT_LIVE/versions/)
